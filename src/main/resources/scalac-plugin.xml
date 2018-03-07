@@ -1,0 +1,4 @@
+<plugin>
+    <name>paradise-ng</name>
+    <classname>localhost.ParadiseNg</classname>
+</plugin>
