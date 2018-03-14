@@ -31,6 +31,9 @@ extends PluginComponent {
             val treesWithAnnotations = findAnnotated(isMyAnnot, unit.body)
             for ((t, an) <- treesWithAnnotations) {
                 println(t)
+                println("---")
+                println(t.pos)
+                println("---")
                 for (a <- an) {
                     println(a)
                 }
