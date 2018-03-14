@@ -4,6 +4,7 @@ class myMetaAnnotation extends ParadiseNgAnnotation
 
 @myMetaAnnotation
 class Hello {
-    def main(args: Array[String]) =
+    @myMetaAnnotation
+    def main(@myMetaAnnotation args: Array[String]) =
         println("Hello!")
 }
