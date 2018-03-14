@@ -22,13 +22,11 @@ extends PluginComponent {
     val phaseName = "paradise-ng"
     val runsAfter = "parser" :: Nil
 
-    def newPhase(_prev: Phase) : StdPhase = new ParadiseNgPhase(_prev)
+    def newPhase(_prev: Phase) : StdPhase = new DisplayMatchesPhase(_prev)
 
-    private class ParadiseNgPhase(prev: Phase) extends StdPhase(prev) {
+    private class DisplayMatchesPhase(prev: Phase) extends StdPhase(prev) {
         def apply(unit: CompilationUnit) : Unit = {
-            val isMyAnnot = (v : AnnotationInfo) =>
-                v.atp <:< typeOf[ParadiseNgAnnotation]
-            val treesWithAnnotations = findAnnotated(isMyAnnot, unit.body)
+            val treesWithAnnotations = findAnnotated(unit.body)
             for ((t, an) <- treesWithAnnotations) {
                 println(t)
                 println("---")
@@ -42,19 +40,22 @@ extends PluginComponent {
         }
     }
 
-    def findAnnotated(predicate : AnnotationInfo => Boolean, tree : Tree) :
-    List[(Tree, List[AnnotationInfo])] = {
-        def annotationsOf(tree: Tree) : List[AnnotationInfo] = tree match {
+    def annotationsOf(tree: Tree) : List[AnnotationInfo] = {
+        val annotations = tree match {
             case t: MemberDef => t.symbol.annotations
             case Typed(_, tt) if tt.tpe != null => tt.tpe.annotations
             case _ => Nil
         }
+        val isMyAnnotation = (v : AnnotationInfo) =>
+            v.atp <:< typeOf[ParadiseNgAnnotation]
+        annotations.filter(isMyAnnotation)
+    }
 
+    def findAnnotated(tree : Tree) : List[(Tree, List[AnnotationInfo])] = {
         var trees = new ListBuffer[(Tree, List[AnnotationInfo])]()
-
         object traverser extends Traverser {
             override def traverse(tree: Tree): Unit = {
-                annotationsOf(tree).filter(predicate) match {
+            annotationsOf(tree) match {
                     case Nil => super.traverse(tree)
                     case lst => {
                         trees += new Tuple2(tree, lst)
@@ -63,9 +64,7 @@ extends PluginComponent {
                 }
             }
         }
-
         traverser.traverse(tree)
-
         trees.toList
     }
 }
