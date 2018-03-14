@@ -1,4 +1,5 @@
-package localhost
+package localhost.plugin
+import localhost.lib.ParadiseNgAnnotation
 
 import scala.tools.nsc
 import nsc.Global
