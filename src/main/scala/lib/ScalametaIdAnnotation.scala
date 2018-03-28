@@ -1,0 +1,3 @@
+package localhost.lib
+
+class ScalametaIdAnnotation extends ParadiseNgAnnotation

@@ -12,6 +12,8 @@ import nsc.transform.Transform
 import scala.collection.mutable.ListBuffer
 import scala.reflect.internal.util.OffsetPosition
 
+import scala.meta._
+
 class ParadiseNg(val global: Global) extends Plugin {
     import global._
     val name = "paradise-ng"
@@ -30,11 +32,12 @@ extends PluginComponent with Transform {
     override def newTransformer(unit: CompilationUnit): Transformer = {
         object fooTransformer extends Transformer {
             override def transform(tree: Tree): Tree = {
-                super.transform(ourAnnotations(tree) match {
-                    case Nil => tree
-                    case lst => (tree /: lst)(
+                val ntree = super.transform(tree)
+                ourAnnotations(ntree) match {
+                    case Nil => ntree
+                    case lst => (ntree /: lst)(
                         (t, a) => applyAnnotation(t, a))
-                })
+                }
             }
         }
         fooTransformer
@@ -79,11 +82,25 @@ extends PluginComponent with Transform {
                         }
                         case _ => t
                     }
+                    case "ScalametaIdAnnotation" => {
+                        val source = readCodeBlock(t.pos)
+                        val metatree = source.parse[Stat].get
+                        val newtext = metatree.toString()
+                        buildReplacementTree(t.pos, newtext, getMods(t).get)
+                    }
                     case _ => t
                 }
             }
             case _ => t
         }
+    }
+
+    /* Given a position, return a string to which this position points */
+    def readCodeBlock(pos: Position) : String = {
+        val path = pos.source.path
+        val source = scala.io.Source.fromFile(path)
+        val text = try source.mkString finally source.close()
+        text.substring(pos.start, pos.end)
     }
 
     /* Given a tree, returns the annotations of the tree that are recognised by
