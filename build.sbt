@@ -5,6 +5,7 @@ crossScalaVersions := Seq("2.11.11", "2.12.4")
 // jar file is produced.
 test in assembly := {}
 
+libraryDependencies += "org.scalameta" %% "scalameta" % "3.6.0"
 libraryDependencies += scalaOrganization.value % "scala-compiler" % scalaVersion.value
 scalacOptions in Test += "-Xplugin:" + (assembly in Compile).value
 scalacOptions in Test += "-Jdummy="  + (assembly in Compile).value.lastModified
