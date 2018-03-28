@@ -28,9 +28,9 @@ extends PluginComponent with Transform {
     override val runsBefore = "namer"  :: Nil
 
     override def newTransformer(unit: CompilationUnit): Transformer = {
-       object fooTransformer extends Transformer {
+        object fooTransformer extends Transformer {
             override def transform(tree: Tree): Tree = {
-                super.transform(ourAnnotations(unit, tree) match {
+                super.transform(ourAnnotations(tree) match {
                     case Nil => tree
                     case lst => (tree /: lst)(
                         (t, a) => applyAnnotation(t, a))
@@ -43,15 +43,12 @@ extends PluginComponent with Transform {
     /* Build a tree that can go in the position specified in its
        argument and represents the provided source code. */
     def buildReplacementTree(pos: Position, code: String, mods: Modifiers): Tree = {
-        val tree = newUnitParser(code).parseStats()(0)
+        adaptTree(pos, setMods(newUnitParser(code).parseStats()(0), mods))
+    }
 
-        /* If we just returned `tree`, then compiler would fail when using
-           the flag -Yrangepos. The reason is, the flag has a side effect:
-           besides providing the detaled information on the positions of
-           trees, it also forces the compiler to recheck that the tree
-           ranges are consistent. The new code isn't and in general can't
-           be aligned to the old range, so we set the positions of all the
-           trees that we insert to a set value inside the allowed range. */
+    /* Adapt the tree to inserting it into the larger tree on the defined
+       position. */
+    def adaptTree(pos: Position, tree: Tree): Tree = {
         val newPos = new OffsetPosition(pos.source, pos.start)
         object positionSetter extends Transformer {
             override def transform(tree: Tree): Tree = {
@@ -59,7 +56,14 @@ extends PluginComponent with Transform {
                 super.transform(tree)
             }
         }
-        positionSetter.transform(setMods(tree, mods))
+        /* If we just returned `tree`, then compiler would fail when using
+           the flag -Yrangepos. The reason is, the flag has a side effect:
+           besides providing the detaled information on the positions of
+           trees, it also forces the compiler to recheck that the tree
+           ranges are consistent. The new code isn't and in general can't
+           be aligned to the old range, so we set the positions of all the
+           trees that we insert to a set value inside the allowed range. */
+        positionSetter.transform(tree)
     }
 
     /* Given a tree and the annotation that we recognise, apply the transforms
@@ -84,7 +88,7 @@ extends PluginComponent with Transform {
 
     /* Given a tree, returns the annotations of the tree that are recognised by
        the plugin. */
-    def ourAnnotations(unit: CompilationUnit, t: Tree) : List[Tree] = {
+    def ourAnnotations(t: Tree) : List[Tree] = {
         getMods(t) match {
             case None => Nil
             case Some(mods) => mods.annotations.map(annotationType).flatten
