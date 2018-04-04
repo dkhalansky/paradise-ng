@@ -127,8 +127,9 @@ extends PluginComponent with Transform {
         val annotPackage = rootMirror.getPackage(
             TermName("localhost.lib"))
         val annotPackageImport = gen.mkWildcardImport(annotPackage)
-        val context = analyzer.NoContext.makeSilent(false).
-            make(annotPackageImport)
+        val context = analyzer.NoContext.
+            make(EmptyTree, rootMirror.RootClass, newScope).
+            makeSilent(false, annotPackageImport)
         val typer = analyzer.newTyper(context)
         val typed = typer.typed(annotation.duplicate)
         if (!typed.tpe.isError && typed.tpe <:< typeOf[ParadiseNgAnnotation]) {
