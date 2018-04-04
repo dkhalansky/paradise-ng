@@ -88,10 +88,19 @@ extends PluginComponent with Transform {
                         val newtext = metatree.toString()
                         buildReplacementTree(t.pos, newtext, getMods(t).get)
                     }
-                    case _ => t
+                    case _ => {
+                        reporter.error(NoPosition, "Unknown annotation " +
+                            str)
+                        t
+                    }
                 }
             }
-            case _ => t
+            case _ => {
+                reporter.error(NoPosition, "Malformed AST: annotated " +
+                    "with something other than a constructor: " +
+                    showRaw(annotation))
+                t
+            }
         }
     }
 
