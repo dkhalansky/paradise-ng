@@ -1,4 +1,8 @@
 package localhost.lib
 
 import scala.annotation.StaticAnnotation
-trait ParadiseNgAnnotation extends StaticAnnotation
+import scala.meta.Tree
+
+trait ParadiseNgAnnotation extends StaticAnnotation {
+    def apply(annottee: Tree): Tree
+}

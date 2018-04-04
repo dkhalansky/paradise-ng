@@ -72,36 +72,15 @@ extends PluginComponent with Transform {
     /* Given a tree and the annotation that we recognise, apply the transforms
        inherent to the annotation. */
     def applyAnnotation(t : Tree, annotation : Tree) : Tree = {
-        annotation match {
-            case Apply(Select(New(Ident(TypeName(str))), _), args) => {
-                str match {
-                    case "FooAnnotation" => t match {
-                        case ClassDef(mods, _, _, _) => {
-                            val foo = "class Foo{def bar(){println(42)}}"
-                            buildReplacementTree(t.pos, foo, mods)
-                        }
-                        case _ => t
-                    }
-                    case "ScalametaIdAnnotation" => {
-                        val source = readCodeBlock(t.pos)
-                        val metatree = source.parse[Stat].get
-                        val newtext = metatree.toString()
-                        buildReplacementTree(t.pos, newtext, getMods(t).get)
-                    }
-                    case _ => {
-                        reporter.error(NoPosition, "Unknown annotation " +
-                            str)
-                        t
-                    }
-                }
-            }
-            case _ => {
-                reporter.error(NoPosition, "Malformed AST: annotated " +
-                    "with something other than a constructor: " +
-                    showRaw(annotation))
-                t
-            }
-        }
+        val source = readCodeBlock(t.pos)
+        val metatree = source.parse[Stat].get
+        val cls = Class.forName(annotation.tpe.typeSymbol.fullName).
+            newInstance.asInstanceOf[{
+                def apply(annottee: scala.meta.Tree): scala.meta.Tree
+            }]
+        val newtree = cls.apply(metatree)
+        val newtext = newtree.toString()
+        buildReplacementTree(t.pos, newtext, getMods(t).get)
     }
 
     /* Given a position, return a string to which this position points */
@@ -133,7 +112,12 @@ extends PluginComponent with Transform {
         val typer = analyzer.newTyper(context)
         val typed = typer.typed(annotation.duplicate)
         if (!typed.tpe.isError && typed.tpe <:< typeOf[ParadiseNgAnnotation]) {
-            Some(annotation)
+            val meth = typed.tpe.member(TermName("apply"))
+            if (meth.isMethod) {
+                Some(typed)
+            } else {
+                None
+            }
         } else {
             None
         }
