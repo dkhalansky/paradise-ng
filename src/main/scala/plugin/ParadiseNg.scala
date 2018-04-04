@@ -131,8 +131,8 @@ extends PluginComponent with Transform {
             make(annotPackageImport)
         val typer = analyzer.newTyper(context)
         val typed = typer.typed(annotation.duplicate)
-        if (typed.tpe != null && typed.tpe <:< typeOf[ParadiseNgAnnotation]) {
-            Some(typed)
+        if (!typed.tpe.isError && typed.tpe <:< typeOf[ParadiseNgAnnotation]) {
+            Some(annotation)
         } else {
             None
         }
