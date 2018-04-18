@@ -22,25 +22,31 @@ class ParadiseNg(val global: Global) extends Plugin {
 }
 
 class ParadiseNgComponent(plugin: Plugin, val global: Global)
-extends PluginComponent with Transform {
+extends PluginComponent {
     import global._
 
     override val phaseName  = "paradise-ng"
     override val runsAfter  = "parser" :: Nil
     override val runsBefore = "namer"  :: Nil
-
-    override def newTransformer(unit: CompilationUnit): Transformer = {
-        object fooTransformer extends Transformer {
-            override def transform(tree: Tree): Tree = {
-                val ntree = super.transform(tree)
-                ourAnnotations(ntree) match {
-                    case Nil => ntree
-                    case lst => (ntree /: lst)(
-                        (t, a) => applyAnnotation(t, a))
-                }
+    def newPhase(prev: Phase) = {
+        object phase extends StdPhase(prev) {
+            def apply(unit: CompilationUnit): Unit = {
+                unit.body = fooTransformer.transform(unit.body)
             }
         }
-        fooTransformer
+        phase
+    }
+
+
+    object fooTransformer extends Transformer {
+        override def transform(tree: Tree): Tree = {
+            val ntree = super.transform(tree)
+            ourAnnotations(ntree) match {
+                case Nil => ntree
+                case lst => (ntree /: lst)(
+                    (t, a) => applyAnnotation(t, a))
+            }
+        }
     }
 
     /* Build a tree that can go in the position specified in its
