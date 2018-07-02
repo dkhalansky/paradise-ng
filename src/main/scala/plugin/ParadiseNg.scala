@@ -5,12 +5,15 @@ import scala.tools.nsc
 import nsc.Global
 import nsc.Phase
 import nsc.Parsing
+import nsc.typechecker.Namers
+import nsc.typechecker.Typers
 import nsc.reporters.StoreReporter
 import nsc.plugins.Plugin
 import nsc.plugins.PluginComponent
 import nsc.transform.Transform
 import scala.collection.mutable.ListBuffer
 import scala.reflect.internal.util.OffsetPosition
+import scala.reflect.internal
 
 import scala.meta._
 
@@ -31,14 +34,16 @@ extends PluginComponent {
     def newPhase(prev: Phase) = {
         object phase extends StdPhase(prev) {
             def apply(unit: CompilationUnit): Unit = {
-                unit.body = fooTransformer.transform(unit.body)
+                val tr = new FooTransformer(unit.body.pos.source.path)
+                unit.body = tr.transform(unit.body)
             }
         }
         phase
     }
 
+    class FooTransformer(path: String) extends Transformer {
+        val metaTree = ScalametaSourceExtractor.fromFile(path)
 
-    object fooTransformer extends Transformer {
         override def transform(tree: Tree): Tree = {
             val ntree = super.transform(tree)
             ourAnnotations(ntree) match {
@@ -46,6 +51,18 @@ extends PluginComponent {
                 case lst => (ntree /: lst)(
                     (t, a) => applyAnnotation(t, a))
             }
+        }
+
+        /* Given a tree and an annotation, apply the transforms. */
+        def applyAnnotation(t : Tree, annotation : Tree) : Tree = {
+            val metatree = metaTree.findAtPos(t.pos.start)
+            val cls = Class.forName(annotation.tpe.typeSymbol.fullName).
+                newInstance.asInstanceOf[{
+                    def apply(annottee: scala.meta.Tree): scala.meta.Tree
+                }]
+            val newtree = cls.apply(metatree)
+            val newtext = newtree.toString()
+            buildReplacementTree(t.pos, newtext, getMods(t).get)
         }
     }
 
@@ -73,20 +90,6 @@ extends PluginComponent {
            be aligned to the old range, so we set the positions of all the
            trees that we insert to a set value inside the allowed range. */
         positionSetter.transform(tree)
-    }
-
-    /* Given a tree and the annotation that we recognise, apply the transforms
-       inherent to the annotation. */
-    def applyAnnotation(t : Tree, annotation : Tree) : Tree = {
-        val source = readCodeBlock(t.pos)
-        val metatree = source.parse[Stat].get
-        val cls = Class.forName(annotation.tpe.typeSymbol.fullName).
-            newInstance.asInstanceOf[{
-                def apply(annottee: scala.meta.Tree): scala.meta.Tree
-            }]
-        val newtree = cls.apply(metatree)
-        val newtext = newtree.toString()
-        buildReplacementTree(t.pos, newtext, getMods(t).get)
     }
 
     /* Given a position, return a string to which this position points */
