@@ -42,6 +42,28 @@ extends PluginComponent {
         phase
     }
 
+    /* Given an AnnotationInfo (received by typechecking a tree and looking at
+       the list of annotations for a symbol), determine if it belongs to
+       ParadiseNg. */
+    def isOurTypedAnnotation(an: AnnotationInfo) : Boolean = {
+        an.symbol isNonBottomSubClass symbolOf[ParadiseNgAnnotation]
+    }
+
+    /* Run an action only on those subtrees that are annotated using
+       ParadiseNg's annotations. */
+    def runOnOurAnnotees(f: Tree => Unit, tree: Tree) {
+        object annoteesTraverser extends Traverser {
+            override def traverse(tree: Tree) {
+                if (tree.symbol != null && tree.isInstanceOf[MemberDef] &&
+                tree.symbol.annotations.exists(isOurTypedAnnotation)) {
+                    f(tree)
+                }
+                super.traverse(tree)
+            }
+        }
+        annoteesTraverser.traverse(tree)
+    }
+
     /* This class is a workaround for Namer always messing up the root context.
 
        The original Namer, it turns out, modifies two scopes: the scope that is
