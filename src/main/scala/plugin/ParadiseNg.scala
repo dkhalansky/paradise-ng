@@ -51,14 +51,19 @@ extends PluginComponent {
 
     /* Run an action only on those subtrees that are annotated using
        ParadiseNg's annotations. */
-    def runOnOurAnnotees(f: Tree => Unit, tree: Tree) {
+    def runOnOurAnnotees(tree: Tree)(f: (MemberDef, AnnotationInfo) => Unit) {
         object annoteesTraverser extends Traverser {
             override def traverse(tree: Tree) {
-                if (tree.symbol != null && tree.isInstanceOf[MemberDef] &&
-                tree.symbol.annotations.exists(isOurTypedAnnotation)) {
-                    f(tree)
-                }
                 super.traverse(tree)
+                tree match {
+                    case md: MemberDef if tree.symbol != null => {
+                        for (an <- tree.symbol.annotations.reverse)
+                        if (isOurTypedAnnotation(an)) {
+                            f(md, an)
+                        }
+                    }
+                    case _ =>
+                }
             }
         }
         annoteesTraverser.traverse(tree)
