@@ -126,6 +126,22 @@ extends PluginComponent {
         result
     }
 
+    def getAnnotationFunction(annotation: AnnotationInfo)(tree: scala.meta.Tree) = {
+        val cls_name = annotation.tpe.typeSymbol.fullName
+        val classloader = {
+            val m_findMacroClassLoader =
+                analyzer.getClass.getMethods().find(_.getName == "findMacroClassLoader").get
+            m_findMacroClassLoader.setAccessible(true)
+            m_findMacroClassLoader.invoke(analyzer).asInstanceOf[ClassLoader]
+        }
+        // val cls = Class.forName(cls_name, true, classloader)
+        val cls = Class.forName(cls_name)
+        val inst = cls.newInstance.asInstanceOf[{
+            def apply(annottee: scala.meta.Tree): scala.meta.Tree
+        }]
+        inst.apply(tree)
+    } : scala.meta.Tree
+
     class FooTransformer(path: String) extends Transformer {
         val metaTree = new ScalametaSourceExtractor(
             ScalametaParser.fromFile(path))
