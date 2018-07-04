@@ -127,7 +127,8 @@ extends PluginComponent {
     }
 
     class FooTransformer(path: String) extends Transformer {
-        val metaTree = ScalametaSourceExtractor.fromFile(path)
+        val metaTree = new ScalametaSourceExtractor(
+            ScalametaParser.fromFile(path))
 
         override def transform(tree: Tree): Tree = {
             val ntree = super.transform(tree)

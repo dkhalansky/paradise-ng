@@ -1,6 +1,19 @@
 package localhost.plugin
 import scala.meta._
 
+/* Given a tree, apply a series of transformations to it. */
+class ScalametaTransformer(var tree: Tree) {
+    private val extractor = new ScalametaSourceExtractor(tree)
+    var storage = tree
+
+    def modify(position: Int, fn: Tree => Tree) {
+        val precise_pos = extractor.findAtPos(position).pos
+        storage = storage.transform {
+            case df if df.pos == precise_pos => fn(df)
+        }
+    }
+}
+
 /* Given a tree in the scalameta format, the extractor can, given a
    position, find the innermost subtree that contains the position.
 
@@ -43,20 +56,18 @@ class ScalametaSourceExtractor(val tree: Tree) {
     }
 }
 
-object ScalametaSourceExtractor {
-    /* Given a file path, create an extractor with the tree parsed from the
-       source code that is in the file. */
-    def fromFile(path: String): ScalametaSourceExtractor = {
+object ScalametaParser {
+    /* Given a file path, create the tree parsed from the source code that
+       is in the file. */
+    def fromFile(path: String): Tree = {
         val source = scala.io.Source.fromFile(path)
         val text = try source.mkString finally source.close()
         fromString(text)
     }
 
-    /* Parse the string into a scalameta tree and create the corresponding
-       extractor. */
-    def fromString(str: String): ScalametaSourceExtractor = {
+    /* Parse the string into a scalameta tree. */
+    def fromString(str: String): Tree = {
         // TODO: error handling
-        val metatree = str.parse[Source].get
-        new ScalametaSourceExtractor(metatree)
+        str.parse[Source].get
     }
 }
