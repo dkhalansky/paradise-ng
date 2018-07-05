@@ -34,9 +34,16 @@ extends PluginComponent {
     def newPhase(prev: Phase) = {
         object phase extends StdPhase(prev) {
             def apply(unit: CompilationUnit): Unit = {
-                val tr = new FooTransformer(unit.body.pos.source.path)
-                unit.body = tr.transform(unit.body)
-                val typed = getPreliminarilyTyped(unit);
+                val typed = getPreliminarilyTyped(unit)
+                val metatree = ScalametaParser.fromFile(
+                    unit.body.pos.source.path)
+                val tr = new ScalametaTransformer(metatree)
+                runOnOurAnnotees(typed) {
+                    (md, an) => {
+                        tr.modify(md.pos.start-1, getAnnotationFunction(an))
+                    }
+                }
+                unit.body = newUnitParser(tr.storage.toString()).parse()
             }
         }
         phase
