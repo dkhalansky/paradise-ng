@@ -136,13 +136,12 @@ extends PluginComponent {
     def getAnnotationFunction(annotation: AnnotationInfo)(tree: scala.meta.Tree) = {
         val cls_name = annotation.tpe.typeSymbol.fullName
         val classloader = {
-            val m_findMacroClassLoader =
-                analyzer.getClass.getMethods().find(_.getName == "findMacroClassLoader").get
-            m_findMacroClassLoader.setAccessible(true)
-            m_findMacroClassLoader.invoke(analyzer).asInstanceOf[ClassLoader]
+            import scala.reflect.internal.util.ScalaClassLoader
+            val classpath = global.classPath.asURLs
+            ScalaClassLoader.fromURLs(classpath,
+                tree.getClass().getClassLoader())
         }
-        // val cls = Class.forName(cls_name, true, classloader)
-        val cls = Class.forName(cls_name)
+        val cls = Class.forName(cls_name, true, classloader)
         val inst = cls.newInstance.asInstanceOf[{
             def apply(annottee: scala.meta.Tree): scala.meta.Tree
         }]
