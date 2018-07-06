@@ -134,6 +134,7 @@ extends PluginComponent {
     }
 
     def getAnnotationFunction(annotation: AnnotationInfo)(tree: scala.meta.Tree) = {
+        import scala.language.reflectiveCalls
         val cls_name = annotation.tpe.typeSymbol.fullName
         val classloader = {
             import scala.reflect.internal.util.ScalaClassLoader
