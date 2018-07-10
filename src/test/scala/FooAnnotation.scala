@@ -1,5 +1,5 @@
 package test1
-import localhost.lib._
+import test.macros._
 
 @FooAnnotation
 class Hello { }

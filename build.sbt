@@ -1,12 +1,26 @@
 name := "paradise-ng"
-crossScalaVersions := Seq("2.11.11", "2.12.4")
 
-// Otherwise tests are run during the assembly phase, before the resulting huge
-// jar file is produced.
-test in assembly := {}
+lazy val commonSettings = Def.settings(
+    crossScalaVersions := Seq("2.11.11", "2.12.4"),
+    libraryDependencies += "org.scalameta" %% "scalameta" % "3.3.0"
+)
 
-libraryDependencies += "org.scalameta" %% "scalameta" % "3.3.0"
-libraryDependencies += scalaOrganization.value % "scala-compiler" % scalaVersion.value
-scalacOptions in Test += "-Xplugin:" + (assembly in Compile).value
-scalacOptions in Test += "-Jdummy="  + (assembly in Compile).value.lastModified
-scalacOptions in Test += "-Yrangepos"
+lazy val paradiseNgLib = (project in file("lib")).settings(commonSettings)
+
+lazy val paradiseNgPlugin = (project in file("plugin")).
+    dependsOn(paradiseNgLib).
+    settings(
+        commonSettings,
+        libraryDependencies +=
+            scalaOrganization.value % "scala-compiler" % scalaVersion.value,
+        assemblyOption.in(assembly) ~= { _.copy(includeScala = false) }
+    )
+
+lazy val `paradise-ng` = (project in file(".")).dependsOn(paradiseNgLib).
+    settings(
+        commonSettings,
+        scalacOptions in Test ++= Seq(
+            "-Xplugin:" + (assembly in paradiseNgPlugin).value,
+            "-Jdummy="  + (assembly in paradiseNgPlugin).value.lastModified
+        )
+    )

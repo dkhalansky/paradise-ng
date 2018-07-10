@@ -1,5 +1,5 @@
 package testScalametaIdAnnotation
-import localhost.lib._
+import test.macros._
 
 @ScalametaIdAnnotation
 class Hello {
