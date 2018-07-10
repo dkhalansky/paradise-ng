@@ -7,9 +7,17 @@ class ScalametaTransformer(var tree: Tree) {
     var storage = tree
 
     def modify(position: Int, fn: Tree => Tree) {
-        val precise_pos = extractor.findAtPos(position).pos
+        val pos = extractor.posAtTransformOrder(position)
+        var order = 0
         storage = storage.transform {
-            case df if df.pos == precise_pos => fn(df)
+            case df => {
+                order += 1
+                if (order == pos) {
+                    fn(df)
+                } else {
+                    df
+                }
+            }
         }
     }
 }
@@ -51,6 +59,24 @@ class ScalametaSourceExtractor(val tree: Tree) {
         var seen: Tree = null;
         tree.traverse {
             case s if s.pos.start <= pos && s.pos.end > pos => seen = s
+        }
+        seen
+    }
+
+    /* Find the innermost subtree that contains the specified position,
+       returning not the subtree, but the order of the subtree in the traversal
+       of the original tree that is performed by the `transform` method. */
+    def posAtTransformOrder(pos: Int): Int = {
+        var order = 0
+        var seen  = 0
+        tree.transform {
+            case s => {
+                order += 1
+                if (s.pos.start <= pos && s.pos.end > pos) {
+                    seen = order
+                }
+                s
+            }
         }
         seen
     }

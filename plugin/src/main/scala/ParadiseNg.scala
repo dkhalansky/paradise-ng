@@ -41,11 +41,11 @@ extends PluginComponent {
                         unit.body.pos.source.path)
                     new ScalametaTransformer(metatree)
                 }
-                runOnOurAnnotees(typed) {
-                    (md, an) => {
+                for ((md, ans) <- ourAnnottees(typed).reverse) {
+                    for (an <- ans) {
                         tr.modify(md.pos.start-1, getAnnotationFunction(an))
-                        didApplyAnnotations = true
                     }
+                    didApplyAnnotations = true
                 }
                 if (didApplyAnnotations) {
                     unit.body = newUnitParser(tr.storage.toString()).parse()
@@ -64,22 +64,24 @@ extends PluginComponent {
 
     /* Run an action only on those subtrees that are annotated using
        ParadiseNg's annotations. */
-    def runOnOurAnnotees(tree: Tree)(f: (MemberDef, AnnotationInfo) => Unit) {
+    def ourAnnottees(tree: Tree): List[(MemberDef, List[AnnotationInfo])] = {
+        import scala.collection.mutable.ArrayBuffer
+        var buffer = new ArrayBuffer[(MemberDef, List[AnnotationInfo])]
         object annoteesTraverser extends Traverser {
             override def traverse(tree: Tree) {
-                super.traverse(tree)
                 tree match {
                     case md: MemberDef if tree.symbol != null => {
-                        for (an <- tree.symbol.annotations.reverse)
-                        if (isOurTypedAnnotation(an)) {
-                            f(md, an)
-                        }
+                        val true_annots = tree.symbol.annotations.filter(
+                            isOurTypedAnnotation)
+                        buffer += ((md, true_annots))
                     }
                     case _ =>
                 }
+                super.traverse(tree)
             }
         }
         annoteesTraverser.traverse(tree)
+        buffer.to[List]
     }
 
     /* This class is a workaround for Namer always messing up the root context.
