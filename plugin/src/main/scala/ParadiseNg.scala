@@ -86,54 +86,18 @@ extends PluginComponent {
         buffer.to[List]
     }
 
-    /* This class is a workaround for Namer always messing up the root context.
-
-       The original Namer, it turns out, modifies two scopes: the scope that is
-       provided to it--and the root scope. The root scope is modified when the
-       namer encounters a package declaration.
-
-       Therefore, it isn't possible to run the original namer on an arbitrary
-       file and still be able to keep the global state intact, no matter how one
-       configures the namer. */
-    class LocalNamer(context: analyzer.Context) extends analyzer.Namer(context) {
-        // Mostly a copy-paste from the original Namer.
-        // scala/src/compiler/scala/tools/nsc/typechecker/Namers.scala
-        override def createPackageSymbol(pos: Position, pid: RefTree): Symbol = {
-            val pkgOwner = pid match {
-              case Ident(_)                 => if (owner.isEmptyPackageClass) rootMirror.RootClass else owner
-              case Select(qual: RefTree, _) => createPackageSymbol(pos, qual).moduleClass
-            }
-            val existing = pkgOwner.info.decls.lookup(pid.name)
-
-            if (existing.hasPackageFlag && pkgOwner == existing.owner)
-              existing
-            else {
-              val pkg          = pkgOwner.newPackage(pid.name.toTermName, pos)
-              val pkgClass     = pkg.moduleClass
-              val pkgClassInfo = new PackageClassInfoType(newPackageScope(pkgClass), pkgClass)
-
-              pkgClass setInfo pkgClassInfo
-              pkg setInfo pkgClass.tpe
-              pkg /* The difference from the original Namer is here: we don't
-                     store the package symbol in the root context but simply
-                     return the newly-created package symbol. We do it just so
-                     the types check out.
-                  */
-            }
-        }
-    }
-
     /* Assign types to the tree as comprehensively as possible. */
     def getPreliminarilyTyped(unit: CompilationUnit): Tree = {
         val reporter = global.reporter
         global.reporter = new StoreReporter()
         var result = unit.body
         try {
-            val tree = unit.body.duplicate
+            val tree = PackageDef(Ident(TermName("'paradise-ng")),
+                List(unit.body.duplicate))
             val context = analyzer.rootContext(unit).
                 make(tree, scope = newScope).
                 makeSilent(false)
-            val namer = new LocalNamer(context)
+            val namer = analyzer.newNamer(context)
             val ct = namer.enterSym(tree)
             val typer = analyzer.newTyper(ct)
             result = typer.typed(tree)
