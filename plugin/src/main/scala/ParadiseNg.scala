@@ -73,7 +73,9 @@ extends PluginComponent {
                     case md: MemberDef if tree.symbol != null => {
                         val true_annots = tree.symbol.annotations.filter(
                             isOurTypedAnnotation)
-                        buffer += ((md, true_annots))
+                        if (true_annots.length > 0) {
+                            buffer += ((md, true_annots))
+                        }
                     }
                     case _ =>
                 }
