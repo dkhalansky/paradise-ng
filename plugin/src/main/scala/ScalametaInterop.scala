@@ -88,12 +88,17 @@ object ScalametaParser {
     def fromFile(path: String): Tree = {
         val source = scala.io.Source.fromFile(path)
         val text = try source.mkString finally source.close()
-        fromString(text)
+        create(text)
     }
 
     /* Parse the string into a scalameta tree. */
-    def fromString(str: String): Tree = {
+    def create(str: String): Tree = {
         // TODO: error handling
+        str.parse[Source].get
+    }
+
+    /* Parse a char array into a scalameta tree. */
+    def create(str: Array[Char]): Tree = {
         str.parse[Source].get
     }
 }

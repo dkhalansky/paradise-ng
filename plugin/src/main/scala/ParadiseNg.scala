@@ -37,8 +37,8 @@ extends PluginComponent {
                 val typed = getPreliminarilyTyped(unit)
                 var didApplyAnnotations = false
                 lazy val tr = {
-                    val metatree = ScalametaParser.fromFile(
-                        unit.body.pos.source.path)
+                    val metatree = ScalametaParser.create(
+                        unit.source.content)
                     new ScalametaTransformer(metatree)
                 }
                 for ((md, ans) <- ourAnnottees(typed).reverse) {
