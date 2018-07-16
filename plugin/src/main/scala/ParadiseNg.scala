@@ -4,16 +4,9 @@ import localhost.lib._
 import scala.tools.nsc
 import nsc.Global
 import nsc.Phase
-import nsc.Parsing
-import nsc.typechecker.Namers
-import nsc.typechecker.Typers
 import nsc.reporters.StoreReporter
 import nsc.plugins.Plugin
 import nsc.plugins.PluginComponent
-import nsc.transform.Transform
-import scala.collection.mutable.ListBuffer
-import scala.reflect.internal.util.OffsetPosition
-import scala.reflect.internal
 
 import scala.meta._
 
