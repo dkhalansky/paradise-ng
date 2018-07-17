@@ -85,7 +85,8 @@ extends PluginComponent {
         global.reporter = new StoreReporter()
         var result = unit.body
         try {
-            val tree = PackageDef(Ident(TermName("'paradise-ng")),
+            val packageIdent = TermName("'paradise-ng")
+            val tree = PackageDef(Ident(packageIdent),
                 List(unit.body.duplicate))
             val context = analyzer.rootContext(unit).
                 make(tree, scope = newScope).
@@ -93,7 +94,12 @@ extends PluginComponent {
             val namer = analyzer.newNamer(context)
             val ct = namer.enterSym(tree)
             val typer = analyzer.newTyper(ct)
-            result = typer.typed(tree)
+            result = typer.typed(tree);
+
+            // erasing the fake package from the root class
+            val decls = rootMirror.RootClass.info.decls
+            val existing = decls.lookup(packageIdent)
+            decls unlink existing
         } finally {
             global.reporter = reporter
         }
