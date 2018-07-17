@@ -55,8 +55,8 @@ extends PluginComponent {
         an.symbol isNonBottomSubClass symbolOf[ParadiseNgAnnotation]
     }
 
-    /* Run an action only on those subtrees that are annotated using
-       ParadiseNg's annotations. */
+    /* Find the subtrees that are annotated using ParadiseNg's annotations,
+       alongside with the relevant annotation definitions. */
     def ourAnnottees(tree: Tree): List[(MemberDef, List[AnnotationInfo])] = {
         import scala.collection.mutable.ArrayBuffer
         var buffer = new ArrayBuffer[(MemberDef, List[AnnotationInfo])]
