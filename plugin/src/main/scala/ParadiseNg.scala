@@ -106,26 +106,34 @@ extends PluginComponent {
         result
     }
 
-    def getAnnotationFunction(annotation: AnnotationInfo)(tree: scala.meta.Tree) = {
-        import scala.language.reflectiveCalls
+    /* Given a symbol, determine the string to feed to the classloader to
+       acquire the corresponding class. */
+    def getClassNameBySymbol(symbol: Symbol) = {
+        def loop(sym: Symbol): String = sym match {
+            case sym if sym.isTopLevel =>
+                val suffix = if (sym.isModule || sym.isModuleClass) "$" else ""
+                sym.fullName + suffix
+            case sym =>
+                val separator = if (sym.owner.isModuleClass) "" else "$"
+                loop(sym.owner) + separator + sym.javaSimpleName.toString
+        }
+        loop(symbol)
+    }
+
+    // Loads the annotation functions.
+    lazy val functionRetriever = new ParadiseNgFunctionRetriever(
+        Reflect.findMacroClassLoader(global.classPath.asURLs,
+            global.settings.outputDirs.getSingleOutput))
+
+    /* From annotation defition acquire the function to be applied to the
+       annotated scalameta tree. */
+    def getAnnotationFunction(annotation: AnnotationInfo):
+    scala.meta.Tree => scala.meta.Tree = {
         val args = annotation.args.map(xs => xs match {
             case Literal(Constant(v)) => v.asInstanceOf[AnyRef]
         })
-        val arg_types = args.map(xs => xs.getClass())
-        val cls_name = annotation.tpe.typeSymbol.fullName
-        val classloader = {
-            import scala.reflect.internal.util.ScalaClassLoader
-            val classpath = global.classPath.asURLs
-            ScalaClassLoader.fromURLs(classpath,
-                tree.getClass().getClassLoader())
-        }
-        val cls = Class.forName(cls_name, true, classloader)
-        val inst = cls.getConstructor(arg_types.toArray: _*)
-            .newInstance(args.toArray: _*)
-            .asInstanceOf[{
-                def apply(annottee: scala.meta.Tree): scala.meta.Tree
-            }]
-        inst.apply(tree)
-    } : scala.meta.Tree
+        val cls_name = getClassNameBySymbol(annotation.tpe.typeSymbol)
+        functionRetriever.retrieve(cls_name, args)
+    }
 
 }
