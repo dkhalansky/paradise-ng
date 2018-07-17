@@ -21,7 +21,7 @@ lazy val `paradise-ng` = (project in file(".")).dependsOn(paradiseNgLib).
         commonSettings,
         publishArtifact := false,
         libraryDependencies += "org.scalatest" %% "scalatest" % "3.0.1",
-        scalacOptions in Test ++= Seq(
+        scalacOptions ++= Seq(
             "-Xplugin:" + (assembly in paradiseNgPlugin).value,
             "-Jdummy="  + (assembly in paradiseNgPlugin).value.lastModified
         )
