@@ -121,7 +121,7 @@ extends PluginComponent {
     }
 
     // Loads the annotation functions.
-    lazy val functionRetriever = new ParadiseNgFunctionRetriever(
+    lazy val retrieveFunction = new ParadiseNgFunctionRetriever(
         Reflect.findMacroClassLoader(global.classPath.asURLs,
             global.settings.outputDirs.getSingleOutput))
 
@@ -133,7 +133,7 @@ extends PluginComponent {
             case Literal(Constant(v)) => v.asInstanceOf[AnyRef]
         })
         val cls_name = getClassNameBySymbol(annotation.tpe.typeSymbol)
-        functionRetriever.retrieve(cls_name, args)
+        retrieveFunction(cls_name, args)
     }
 
 }
