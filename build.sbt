@@ -16,11 +16,25 @@ lazy val paradiseNgPlugin = (project in file("plugin")).
         assemblyOption.in(assembly) ~= { _.copy(includeScala = false) }
     )
 
-lazy val `paradise-ng` = (project in file(".")).dependsOn(paradiseNgLib).
+lazy val tests = (project in file("tests")).dependsOn(paradiseNgLib).
     settings(
         commonSettings,
         publishArtifact := false,
         libraryDependencies += "org.scalatest" %% "scalatest" % "3.0.1",
+        scalacOptions in Test ++= Seq(
+            "-Xplugin:" + (assembly in paradiseNgPlugin).value,
+            "-Jdummy="  + (assembly in paradiseNgPlugin).value.lastModified
+        )
+    )
+
+lazy val `paradise-ng` = (project in file(".")).dependsOn(paradiseNgLib).
+    aggregate(
+        paradiseNgLib,
+        paradiseNgPlugin,
+        tests
+    ).
+    settings(
+        commonSettings,
         scalacOptions ++= Seq(
             "-Xplugin:" + (assembly in paradiseNgPlugin).value,
             "-Jdummy="  + (assembly in paradiseNgPlugin).value.lastModified
