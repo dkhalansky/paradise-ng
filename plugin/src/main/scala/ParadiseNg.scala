@@ -111,6 +111,27 @@ extends PluginComponent {
         result
     }
 
+    case class SymbolSourceAttachment(source: Tree)
+
+    def attachSourcesToSymbols(tree: Tree) {
+        (new Traverser {
+            override def traverse(tree: Tree) {
+                tree match {
+                    case md : MemberDef
+                    if md.symbol != null && md.symbol != NoSymbol => {
+                        md.symbol.updateAttachment(SymbolSourceAttachment(md))
+                    }
+                    case _ =>
+                }
+                super.traverse(tree)
+            }
+        }).traverse(tree)
+    }
+
+    def getSource(symbol: Symbol): Option[Tree] = {
+        symbol.attachments.get[SymbolSourceAttachment].map(att => att.source)
+    }
+
     /* Given a symbol, determine the string to feed to the classloader to
        acquire the corresponding class. */
     def getClassNameBySymbol(symbol: Symbol) = {
@@ -134,9 +155,17 @@ extends PluginComponent {
        annotated scalameta tree. */
     def getAnnotationFunction(annotation: AnnotationInfo):
     scala.meta.Tree => scala.meta.Tree = {
-        val args = annotation.args.map(xs => xs match {
-            case Literal(Constant(v)) => v.asInstanceOf[AnyRef]
-        })
+        lazy val withSources = attachSourcesToSymbols(annotation.original)
+        val args = annotation.args.map(xs => (xs match {
+            case Literal(Constant(v)) => v
+            case s : Ident if s.symbol != null && s.symbol != NoSymbol => {
+                withSources
+                getSource(s.symbol) match {
+                    case Some(ValDef(_, _, _, Literal(Constant(v)))) => v
+                    case v => { println(showRaw(v)); 15 }
+                }
+            }
+        }).asInstanceOf[AnyRef])
         val cls_name = getClassNameBySymbol(annotation.tpe.typeSymbol)
         retrieveFunction(cls_name, args)
     }
