@@ -12,17 +12,17 @@ case class PendingTransforms(candidate: Tree) extends InputStream {
 
 object PendingTransforms {
 
-    private def getOrigin(tree: Tree): Origin = {
+    private def originField(tree: Tree): java.lang.reflect.Field = {
         val origin = tree.getClass()
-            .getDeclaredMethods()
+            .getDeclaredFields()
             .find(_.getName == "privateOrigin")
             .get
         origin.setAccessible(true)
-        origin.invoke(tree).asInstanceOf[Origin]
+        origin
     }
 
     def getCandidate(tree: Tree): Tree = {
-        getOrigin(tree) match {
+        originField(tree).get(tree) match {
             case Origin.Parsed(Input.Stream(PendingTransforms(c), _), _, _)
                 => c
             case _ => tree
@@ -30,7 +30,7 @@ object PendingTransforms {
     }
 
     def getPosition(tree: Tree): Option[Position] = {
-        getOrigin(tree) match {
+        originField(tree).get(tree) match {
             case Origin.Parsed(Input.Stream(PendingTransforms(c), _), _, _)
                 => None
             case _ => Some(tree.pos)
@@ -39,12 +39,7 @@ object PendingTransforms {
 
     implicit class XtensionTreePositions[T <: Tree](val tree: T) extends AnyVal {
         def transformsInto(newtree: Tree): T = {
-            val origin = tree.getClass()
-                .getDeclaredFields()
-                .find(_.getName == "privateOrigin")
-                .get
-            origin.setAccessible(true)
-            origin.set(tree,
+            originField(tree).set(tree,
                 Origin.Parsed(
                     Input.Stream(new PendingTransforms(newtree),
                         StandardCharsets.UTF_8),
