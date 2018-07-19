@@ -32,16 +32,21 @@ extends PluginComponent {
                 lazy val tr = {
                     val metatree = ScalametaParser.create(
                         unit.source.content)
-                    new ScalametaTransformer(metatree)
+                    val anotherMetatree = ScalametaParser.create(
+                        unit.source.content)
+                    new ScalametaTransformer(metatree,
+                        new ScalametaSourceExtractor(anotherMetatree))
                 }
                 for ((md, ans) <- ourAnnottees(typed).reverse) {
-                    for (an <- ans) {
-                        tr.modify(md.pos.start-1, getAnnotationFunction(an))
+                    val start : scala.meta.Tree => scala.meta.Tree = m => m
+                    var fn = (start /: ans) {
+                        (f, an) => getAnnotationFunction(an) compose f
                     }
+                    tr.modify(md.pos.start-1, fn)
                     didApplyAnnotations = true
                 }
                 if (didApplyAnnotations) {
-                    unit.body = newUnitParser(tr.storage.toString()).parse()
+                    unit.body = newUnitParser(tr.get().toString()).parse()
                 }
             }
         }

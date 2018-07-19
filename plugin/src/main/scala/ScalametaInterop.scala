@@ -1,23 +1,88 @@
 package localhost.plugin
 import scala.meta._
 
+import java.io.InputStream
+import java.nio.charset.StandardCharsets
+import scala.meta.internal.tokens.TokenStreamPosition
+import scala.meta.internal.trees.Origin
+
+case class PendingTransforms(candidate: Tree) extends InputStream {
+    override def read(): Int = -1
+}
+
+object PendingTransforms {
+
+    private def getOrigin(tree: Tree): Origin = {
+        val origin = tree.getClass()
+            .getDeclaredMethods()
+            .find(_.getName == "privateOrigin")
+            .get
+        origin.setAccessible(true)
+        origin.invoke(tree).asInstanceOf[Origin]
+    }
+
+    def getCandidate(tree: Tree): Tree = {
+        getOrigin(tree) match {
+            case Origin.Parsed(Input.Stream(PendingTransforms(c), _), _, _)
+                => c
+            case _ => tree
+        }
+    }
+
+    def getPosition(tree: Tree): Option[Position] = {
+        getOrigin(tree) match {
+            case Origin.Parsed(Input.Stream(PendingTransforms(c), _), _, _)
+                => None
+            case _ => Some(tree.pos)
+        }
+    }
+
+    implicit class XtensionTreePositions[T <: Tree](val tree: T) extends AnyVal {
+        def transformsInto(newtree: Tree): T = {
+            val origin = tree.getClass()
+                .getDeclaredFields()
+                .find(_.getName == "privateOrigin")
+                .get
+            origin.setAccessible(true)
+            origin.set(tree,
+                Origin.Parsed(
+                    Input.Stream(new PendingTransforms(newtree),
+                        StandardCharsets.UTF_8),
+                    dialects.Scala212,
+                    TokenStreamPosition(-1, -1)
+                )
+            )
+            tree
+        }
+    }
+}
+
 /* Given a tree, apply a series of transformations to it. */
-class ScalametaTransformer(var tree: Tree) {
-    private val extractor = new ScalametaSourceExtractor(tree)
+class ScalametaTransformer(
+    var tree: Tree,
+    val extractor: ScalametaSourceExtractor
+) {
     var storage = tree
 
     def modify(position: Int, fn: Tree => Tree) {
-        val pos = extractor.posAtTransformOrder(position)
-        var order = 0
+        val pos = extractor.findAtPos(position).pos
         storage = storage.transform {
             case df => {
-                order += 1
-                if (order == pos) {
-                    fn(df)
+                if (PendingTransforms.getPosition(df) == Some(pos)) {
+                    import PendingTransforms._
+                    df transformsInto fn(df.transform {
+                        case s => PendingTransforms.getCandidate(s)
+                    })
                 } else {
                     df
                 }
             }
+        }
+    }
+
+    def get(): Tree = {
+        storage.transform {
+            case s => PendingTransforms.getCandidate(s)
         }
     }
 }
