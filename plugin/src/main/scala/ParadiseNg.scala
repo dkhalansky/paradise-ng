@@ -28,6 +28,7 @@ extends PluginComponent {
         object phase extends StdPhase(prev) {
             def apply(unit: CompilationUnit): Unit = {
                 val typed = getPreliminarilyTyped(unit)
+                attachSourcesToSymbols(typed)
                 var didApplyAnnotations = false
                 lazy val tr = {
                     val metatree = ScalametaParser.create(
@@ -38,11 +39,17 @@ extends PluginComponent {
                         new ScalametaSourceExtractor(anotherMetatree))
                 }
                 for ((md, ans) <- ourAnnottees(typed).reverse) {
+                    val companionPos = {
+                        val sym = md.symbol.companion
+                        if (sym == null || sym == NoSymbol) {
+                            None
+                        } else getSource(sym).map(t => t.pos.start-1)
+                    }
                     val start : scala.meta.Tree => scala.meta.Tree = m => m
                     var fn = (start /: ans) {
                         (f, an) => getAnnotationFunction(an) compose f
                     }
-                    tr.modify(md.pos.start-1, fn)
+                    tr.modify(md.pos.start-1, companionPos, fn)
                     didApplyAnnotations = true
                 }
                 if (didApplyAnnotations) {

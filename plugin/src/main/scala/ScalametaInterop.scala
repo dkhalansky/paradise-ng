@@ -5,6 +5,7 @@ import java.io.InputStream
 import java.nio.charset.StandardCharsets
 import scala.meta.internal.tokens.TokenStreamPosition
 import scala.meta.internal.trees.Origin
+import scala.meta.transversers._
 
 object ScalametaTreeStorage {
 
@@ -57,19 +58,51 @@ object ScalametaTreeStorage {
 
 /* Given a tree, apply a series of transformations to it. */
 class ScalametaTransformer(
-    var tree: Tree,
+    val tree: Tree,
     val extractor: ScalametaSourceExtractor
 ) {
     import ScalametaTreeStorage._
-    var storage = tree
+    private var storage = tree
 
-    def modify(position: Int, fn: Tree => Tree) {
+    private def getAt(position: Int) : Stat = {
+        val pos = extractor.findAtPos(position).pos
+        storage.collect {
+            case df : Stat if df.getPosition() == pos => df
+        } match { case List(t) => t }
+    }
+
+    private def setAt(position: Int, newtree: Tree) {
         val pos = extractor.findAtPos(position).pos
         storage.traverse {
             case df if df.getPosition() == pos => {
-                df storePayload fn(df.transform {
-                    case s => s.getPayload[Tree]().getOrElse(s)
-                })
+                df storePayload newtree
+            }
+        }
+    }
+
+    def modify(position: Int, companionPos: Option[Int], fn: Tree => Tree) {
+        val tree = getAt(position)
+        val arg = companionPos match {
+            case None => tree
+            case Some(p) => Term.Block(List(tree, getAt(p)))
+        }
+        val expanded = fn(arg.transform {
+            case s => s.getPayload[Tree]().getOrElse(s)
+        })
+        expanded match {
+            case Term.Block(List(tree, companion)) => {
+                setAt(position, tree)
+                companionPos match {
+                    case None => // an error
+                    case Some(p) => setAt(p, companion)
+                }
+            }
+            case tree => {
+                setAt(position, tree)
+                companionPos match {
+                    case None =>
+                    case Some(p) => setAt(p, q"{}")
+                }
             }
         }
     }
