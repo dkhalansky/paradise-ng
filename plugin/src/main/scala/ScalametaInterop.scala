@@ -56,26 +56,44 @@ object ScalametaTreeStorage {
 
 }
 
+object PostOrderTraversal {
+    implicit class XtensionPostOrderTraverser[T <: Tree](val tree: T)
+    extends AnyVal {
+        def traversePostOrder(fn: PartialFunction[Tree, Unit]) {
+            val liftedFn = fn.lift
+            (new Traverser {
+                override def apply(tree: Tree) {
+                    super.apply(tree)
+                    liftedFn(tree)
+                }
+            })(tree)
+        }
+    }
+}
+
 /* Given a tree, apply a series of transformations to it. */
-class ScalametaTransformer(
-    val tree: Tree,
-    val extractor: ScalametaSourceExtractor
-) {
+class ScalametaTransformer(var tree: Tree) {
     import ScalametaTreeStorage._
-    private var storage = tree
+    import PostOrderTraversal._
+
+    private def contains(p: Position, i: Int) : Boolean = {
+        p.start <= i && p.end > i
+    }
 
     private def getAt(position: Int) : Stat = {
-        val pos = extractor.findAtPos(position).pos
-        storage.collect {
-            case df : Stat if df.getPosition() == pos => df
-        } match { case List(t) => t }
+        tree.traversePostOrder {
+            case df: Stat if contains(df.getPosition(), position) => return df
+        }
+        return q"{}"
     }
 
     private def setAt(position: Int, newtree: Tree) {
-        val pos = extractor.findAtPos(position).pos
-        storage.traverse {
-            case df if df.getPosition() == pos => {
+        var done = false
+        tree.traversePostOrder {
+            case df : Stat if contains(df.getPosition(), position) && !done => {
                 df storePayload newtree
+                done = true
+                return
             }
         }
     }
@@ -108,69 +126,9 @@ class ScalametaTransformer(
     }
 
     def get(): Tree = {
-        storage.transform {
+        tree.transform {
             case s => s.getPayload[Tree]().getOrElse(s)
         }
-    }
-}
-
-/* Given a tree in the scalameta format, the extractor can, given a
-   position, find the innermost subtree that contains the position.
-
-   This class exists as a workaround for the problem that the Scala compiler
-   specifies not range positions for trees but only the starting positions.
-   If the compiler provided both start and end positions, it would be easy to
-   just get the corresponding source code from the source file and then parse
-   it with scalameta.
-
-   `scalac` provides an `-Yrangepos` flag which forces the compiler to provide
-   range positions, but it isn't really advisable to use it since it breaks
-   many plugins due to the fact that it agressively checks that after the typer
-   phase the positions of the trees are sensible, that is, that children of a
-   parent lie inside the parent and don't overlap. Many plugins that perform
-   transformations don't test with this flag on, and without it, no such checks
-   are performed. */
-class ScalametaSourceExtractor(val tree: Tree) {
-    /* Find the innermost subtree that contains the specified position.
-       If the position is out of bounds, `null` is returned, so it is
-       advised not to do that.
-
-       In case one wants to find a subtree corresponding to some function
-       declaration, the best strategy would be to provide a position of a
-       keyword that specifies the type of the declaration, like this:
-
-           @annotation1 @annotation2 class A { def foo() { } }
-                                     ^
-
-       If one pointed somewhere to the left, the innermost subtree would
-       contain an annotation identifier. If one pointed at an `A`, then
-       the `A` identifier would be the innermost subtree. If one pointed
-       at the code block, the code block's subtree would be chosen over the
-       declaration subtree. */
-    def findAtPos(pos: Int): Tree = {
-        var seen: Tree = null;
-        tree.traverse {
-            case s if s.pos.start <= pos && s.pos.end > pos => seen = s
-        }
-        seen
-    }
-
-    /* Find the innermost subtree that contains the specified position,
-       returning not the subtree, but the order of the subtree in the traversal
-       of the original tree that is performed by the `transform` method. */
-    def posAtTransformOrder(pos: Int): Int = {
-        var order = 0
-        var seen  = 0
-        tree.transform {
-            case s => {
-                order += 1
-                if (s.pos.start <= pos && s.pos.end > pos) {
-                    seen = order
-                }
-                s
-            }
-        }
-        seen
     }
 }
 

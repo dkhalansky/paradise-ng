@@ -33,10 +33,7 @@ extends PluginComponent {
                 lazy val tr = {
                     val metatree = ScalametaParser.create(
                         unit.source.content)
-                    val anotherMetatree = ScalametaParser.create(
-                        unit.source.content)
-                    new ScalametaTransformer(metatree,
-                        new ScalametaSourceExtractor(anotherMetatree))
+                    new ScalametaTransformer(metatree)
                 }
                 for ((md, ans) <- ourAnnottees(typed).reverse) {
                     val companionPos = {
