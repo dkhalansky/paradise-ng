@@ -158,21 +158,29 @@ extends PluginComponent {
         Reflect.findMacroClassLoader(global.classPath.asURLs,
             global.settings.outputDirs.getSingleOutput))
 
+    def resolveConstant(tree: Tree, maxDepth: Int = 50): Option[AnyRef] = {
+        if (maxDepth <= 0) {
+            None
+        } else tree match {
+            case Literal(Constant(v)) => Some(v.asInstanceOf[AnyRef])
+            case s if s.symbol != null && s.symbol != NoSymbol => {
+                getSource(s.symbol) match {
+                    case Some(ValDef(_, _, _, v)) => {
+                        resolveConstant(v, maxDepth - 1)
+                    }
+                    case _ => None
+                }
+            }
+            case _ => None
+        }
+    }
+
     /* From annotation defition acquire the function to be applied to the
        annotated scalameta tree. */
     def getAnnotationFunction(annotation: AnnotationInfo):
     scala.meta.Tree => scala.meta.Tree = {
-        lazy val withSources = attachSourcesToSymbols(annotation.original)
-        val args = annotation.args.map(xs => (xs match {
-            case Literal(Constant(v)) => v
-            case s : Ident if s.symbol != null && s.symbol != NoSymbol => {
-                withSources
-                getSource(s.symbol) match {
-                    case Some(ValDef(_, _, _, Literal(Constant(v)))) => v
-                    case v => { println(showRaw(v)); 15 }
-                }
-            }
-        }).asInstanceOf[AnyRef])
+        val withSources = attachSourcesToSymbols(annotation.original)
+        val args = annotation.args.map(xs => resolveConstant(xs).get)
         val cls_name = getClassNameBySymbol(annotation.tpe.typeSymbol)
         retrieveFunction(cls_name, args)
     }
