@@ -6,7 +6,8 @@ import java.nio.charset.StandardCharsets
 import scala.meta.internal.tokens.TokenStreamPosition
 import scala.meta.internal.trees.Origin
 
-case class PendingTransforms(candidate: Tree) extends InputStream {
+case class PendingTransforms(candidate: Tree, pos: Position)
+extends InputStream {
     override def read(): Int = -1
 }
 
@@ -23,17 +24,17 @@ object PendingTransforms {
 
     def getCandidate(tree: Tree): Tree = {
         originField(tree).get(tree) match {
-            case Origin.Parsed(Input.Stream(PendingTransforms(c), _), _, _)
+            case Origin.Parsed(Input.Stream(PendingTransforms(c, _), _), _, _)
                 => c
             case _ => tree
         }
     }
 
-    def getPosition(tree: Tree): Option[Position] = {
+    def getPosition(tree: Tree): Position = {
         originField(tree).get(tree) match {
-            case Origin.Parsed(Input.Stream(PendingTransforms(c), _), _, _)
-                => None
-            case _ => Some(tree.pos)
+            case Origin.Parsed(Input.Stream(PendingTransforms(_, p), _), _, _)
+                => p
+            case _ => tree.pos
         }
     }
 
@@ -41,7 +42,8 @@ object PendingTransforms {
         def transformsInto(newtree: Tree): T = {
             originField(tree).set(tree,
                 Origin.Parsed(
-                    Input.Stream(new PendingTransforms(newtree),
+                    Input.Stream(
+                        new PendingTransforms(newtree, getPosition(tree)),
                         StandardCharsets.UTF_8),
                     dialects.Scala212,
                     TokenStreamPosition(-1, -1)
@@ -62,7 +64,7 @@ class ScalametaTransformer(
     def modify(position: Int, fn: Tree => Tree) {
         val pos = extractor.findAtPos(position).pos
         storage.traverse {
-            case df if PendingTransforms.getPosition(df) == Some(pos) => {
+            case df if PendingTransforms.getPosition(df) == pos => {
                 import PendingTransforms._
                 df transformsInto fn(df.transform {
                     case s => PendingTransforms.getCandidate(s)
