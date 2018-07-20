@@ -6,12 +6,14 @@ import java.nio.charset.StandardCharsets
 import scala.meta.internal.tokens.TokenStreamPosition
 import scala.meta.internal.trees.Origin
 
-case class PendingTransforms(candidate: Tree, pos: Position)
-extends InputStream {
-    override def read(): Int = -1
-}
+object ScalametaTreeStorage {
 
-object PendingTransforms {
+    import scala.reflect.ClassTag
+
+    private case class Storage[T: ClassTag](payload: T, pos: Position)
+    extends InputStream {
+        override def read(): Int = -1
+    }
 
     private def originField(tree: Tree): java.lang.reflect.Field = {
         val origin = tree.getClass()
@@ -22,28 +24,11 @@ object PendingTransforms {
         origin
     }
 
-    def getCandidate(tree: Tree): Tree = {
-        originField(tree).get(tree) match {
-            case Origin.Parsed(Input.Stream(PendingTransforms(c, _), _), _, _)
-                => c
-            case _ => tree
-        }
-    }
-
-    def getPosition(tree: Tree): Position = {
-        originField(tree).get(tree) match {
-            case Origin.Parsed(Input.Stream(PendingTransforms(_, p), _), _, _)
-                => p
-            case _ => tree.pos
-        }
-    }
-
-    implicit class XtensionTreePositions[T <: Tree](val tree: T) extends AnyVal {
-        def transformsInto(newtree: Tree): T = {
+    implicit class XtensionTreeStorage[T <: Tree](val tree: T) extends AnyVal {
+        def storePayload[U: ClassTag](payload: U): T = {
             originField(tree).set(tree,
                 Origin.Parsed(
-                    Input.Stream(
-                        new PendingTransforms(newtree, getPosition(tree)),
+                    Input.Stream(new Storage[U](payload, getPosition()),
                         StandardCharsets.UTF_8),
                     dialects.Scala212,
                     TokenStreamPosition(-1, -1)
@@ -51,7 +36,23 @@ object PendingTransforms {
             )
             tree
         }
+
+        def getPayload[U: ClassTag](): Option[U] = {
+            originField(tree).get(tree) match {
+                case Origin.Parsed(Input.Stream(Storage(p: U, _), _), _, _)
+                    => Some(p)
+                case _ => None
+            }
+        }
+
+        def getPosition(): Position = {
+            originField(tree).get(tree) match {
+                case Origin.Parsed(Input.Stream(Storage(_, p), _), _, _) => p
+                case _ => tree.pos
+            }
+        }
     }
+
 }
 
 /* Given a tree, apply a series of transformations to it. */
@@ -59,15 +60,15 @@ class ScalametaTransformer(
     var tree: Tree,
     val extractor: ScalametaSourceExtractor
 ) {
+    import ScalametaTreeStorage._
     var storage = tree
 
     def modify(position: Int, fn: Tree => Tree) {
         val pos = extractor.findAtPos(position).pos
         storage.traverse {
-            case df if PendingTransforms.getPosition(df) == pos => {
-                import PendingTransforms._
-                df transformsInto fn(df.transform {
-                    case s => PendingTransforms.getCandidate(s)
+            case df if df.getPosition() == pos => {
+                df storePayload fn(df.transform {
+                    case s => s.getPayload[Tree]().getOrElse(s)
                 })
             }
         }
@@ -75,7 +76,7 @@ class ScalametaTransformer(
 
     def get(): Tree = {
         storage.transform {
-            case s => PendingTransforms.getCandidate(s)
+            case s => s.getPayload[Tree]().getOrElse(s)
         }
     }
 }
