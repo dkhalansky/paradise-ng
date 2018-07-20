@@ -61,16 +61,12 @@ class ScalametaTransformer(
 
     def modify(position: Int, fn: Tree => Tree) {
         val pos = extractor.findAtPos(position).pos
-        storage = storage.transform {
-            case df => {
-                if (PendingTransforms.getPosition(df) == Some(pos)) {
-                    import PendingTransforms._
-                    df transformsInto fn(df.transform {
-                        case s => PendingTransforms.getCandidate(s)
-                    })
-                } else {
-                    df
-                }
+        storage.traverse {
+            case df if PendingTransforms.getPosition(df) == Some(pos) => {
+                import PendingTransforms._
+                df transformsInto fn(df.transform {
+                    case s => PendingTransforms.getCandidate(s)
+                })
             }
         }
     }
