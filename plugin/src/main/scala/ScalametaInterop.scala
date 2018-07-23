@@ -87,14 +87,20 @@ class ScalametaTransformer(var tree: Tree) {
         return q"{}"
     }
 
-    private def setAt(position: Int, newtree: Tree) {
-        var done = false
-        tree.traversePostOrder {
-            case df : Stat if contains(df.getPosition(), position) && !done => {
-                df storePayload newtree
-                done = true
-                return
-            }
+    private def replaceChild(
+        parent: Tree,
+        child: Stat,
+        newchildren: List[Stat]
+    ) : Tree = {
+        def newStats(old: List[Stat]) : List[Stat] = old.flatMap {
+            case v if v.equals(child) => newchildren
+            case v => List(v)
+        }
+        child.parent.get match {
+            case o @ Template(_, _, _, stats) => o.copy(stats = newStats(stats))
+            case o @ Source(stats)            => o.copy(stats = newStats(stats))
+            case o @ Term.Block(stats)        => o.copy(stats = newStats(stats))
+            case o @ Pkg(_, stats)            => o.copy(stats = newStats(stats))
         }
     }
 
@@ -106,10 +112,13 @@ class ScalametaTransformer(var tree: Tree) {
             case s => s.getPayload[Tree]().getOrElse(s)
         }).asInstanceOf[Stat])
         expanded match {
-            case Term.Block(List(t, c)) => {
+            case Term.Block(lst @ List(t, c)) => {
                 tree storePayload t
                 companion match {
-                    case None => // an error
+                    case None => {
+                        val parent = tree.parent.get
+                        parent storePayload replaceChild(parent, tree, lst)
+                    }
                     case Some(p) => p storePayload c
                 }
             }
@@ -117,7 +126,10 @@ class ScalametaTransformer(var tree: Tree) {
                 tree storePayload t
                 companion match {
                     case None =>
-                    case Some(p) => p storePayload q"{}"
+                    case Some(p) => {
+                        val parent = p.parent.get
+                        parent storePayload replaceChild(parent, p, List())
+                    }
                 }
             }
         }
