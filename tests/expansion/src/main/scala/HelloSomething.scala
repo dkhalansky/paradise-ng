@@ -4,7 +4,7 @@ import localhost.lib._
 
 class HelloSomething(val hello: String = "Hi", val world: String = "Earth")
 extends ParadiseNgAnnotation {
-  def apply(annottee: Tree): Tree = {
+  def apply(annottee: Stat): Stat = {
       val name = Term.Name(hello + world)
       q"""def $name() = $hello + ", " + $world + "!""""
   }

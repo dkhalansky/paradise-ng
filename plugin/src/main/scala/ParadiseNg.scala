@@ -42,7 +42,7 @@ extends PluginComponent {
                             None
                         } else getSource(sym).map(t => t.pos.start-1)
                     }
-                    val start : scala.meta.Tree => scala.meta.Tree = m => m
+                    val start : scala.meta.Stat => scala.meta.Stat = m => m
                     var fn = (start /: ans) {
                         (f, an) => getAnnotationFunction(an) compose f
                     }
@@ -175,7 +175,7 @@ extends PluginComponent {
     /* From annotation defition acquire the function to be applied to the
        annotated scalameta tree. */
     def getAnnotationFunction(annotation: AnnotationInfo):
-    scala.meta.Tree => scala.meta.Tree = {
+    scala.meta.Stat => scala.meta.Stat = {
         val withSources = attachSourcesToSymbols(annotation.original)
         val args = annotation.args.map(xs => resolveConstant(xs).get)
         val cls_name = getClassNameBySymbol(annotation.tpe.typeSymbol)

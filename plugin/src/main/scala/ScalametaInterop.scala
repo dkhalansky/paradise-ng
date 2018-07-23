@@ -98,28 +98,26 @@ class ScalametaTransformer(var tree: Tree) {
         }
     }
 
-    def modify(position: Int, companionPos: Option[Int], fn: Tree => Tree) {
+    def modify(position: Int, companionPos: Option[Int], fn: Stat => Stat) {
         val tree = getAt(position)
-        val arg = companionPos match {
-            case None => tree
-            case Some(p) => Term.Block(List(tree, getAt(p)))
-        }
-        val expanded = fn(arg.transform {
+        val companion = companionPos.map(getAt)
+        val arg = companion.map(c => Term.Block(List(tree, c))).getOrElse(tree)
+        val expanded = fn((arg.transform {
             case s => s.getPayload[Tree]().getOrElse(s)
-        })
+        }).asInstanceOf[Stat])
         expanded match {
-            case Term.Block(List(tree, companion)) => {
-                setAt(position, tree)
-                companionPos match {
+            case Term.Block(List(t, c)) => {
+                tree storePayload t
+                companion match {
                     case None => // an error
-                    case Some(p) => setAt(p, companion)
+                    case Some(p) => p storePayload c
                 }
             }
-            case tree => {
-                setAt(position, tree)
-                companionPos match {
+            case t => {
+                tree storePayload t
+                companion match {
                     case None =>
-                    case Some(p) => setAt(p, q"{}")
+                    case Some(p) => p storePayload q"{}"
                 }
             }
         }

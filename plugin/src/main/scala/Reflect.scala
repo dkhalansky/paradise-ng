@@ -55,9 +55,9 @@ class ParadiseNgFunctionRetriever(loader: ClassLoader) {
     import scala.meta._
 
     /* Get the function that transforms scalameta trees. */
-    def apply(className: String, args: List[AnyRef]): Tree => Tree = {
+    def apply(className: String, args: List[AnyRef]): Stat => Stat = {
         import scala.language.reflectiveCalls
-        Reflect.instantiate[{ def apply(annottee: Tree): Tree }](
+        Reflect.instantiate[{ def apply(annottee: Stat): Stat }](
             loader, className, args
         ).apply(_)
     }
