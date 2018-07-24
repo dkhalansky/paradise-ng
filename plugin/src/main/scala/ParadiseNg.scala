@@ -203,6 +203,8 @@ extends PluginComponent {
     def getSource(symbol: Symbol): Option[Tree] = {
         if (symbol == null || symbol == NoSymbol) {
             None
+        } else if (symbol.isModuleClass) {
+            getSource(symbol.sourceModule)
         } else {
             symbol.attachments
               .get[SymbolSourceAttachment]
