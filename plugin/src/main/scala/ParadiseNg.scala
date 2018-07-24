@@ -120,12 +120,10 @@ extends PluginComponent {
     def attachSourcesToSymbols(tree: Tree) {
         (new Traverser {
             override def traverse(tree: Tree) {
-                tree match {
-                    case md : MemberDef
-                    if md.symbol != null && md.symbol != NoSymbol => {
-                        md.symbol.updateAttachment(SymbolSourceAttachment(md))
-                    }
-                    case _ =>
+                if (tree.symbol != null && tree.symbol != NoSymbol && (
+                    tree.isInstanceOf[MemberDef] || tree.symbol.isLocalDummy
+                )) {
+                    tree.symbol.updateAttachment(SymbolSourceAttachment(tree))
                 }
                 super.traverse(tree)
             }
@@ -133,7 +131,13 @@ extends PluginComponent {
     }
 
     def getSource(symbol: Symbol): Option[Tree] = {
-        symbol.attachments.get[SymbolSourceAttachment].map(att => att.source)
+        if (symbol == null || symbol == NoSymbol) {
+            None
+        } else {
+            symbol.attachments
+              .get[SymbolSourceAttachment]
+              .map(att => att.source)
+        }
     }
 
     /* Given a symbol, determine the string to feed to the classloader to
