@@ -96,7 +96,7 @@ extends PluginComponent {
            companion object, we trust it if the member was not defined in a
            code block. */
         val owner = original.symbol.owner
-        if (!owner.isTerm && owner.hasCompleteInfo) {
+        if (!owner.isTerm && owner.hasCompleteInfo && !original.symbol.isType) {
             return None
         }
 
