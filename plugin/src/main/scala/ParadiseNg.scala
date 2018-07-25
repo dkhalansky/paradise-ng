@@ -27,26 +27,31 @@ extends PluginComponent {
     def newPhase(prev: Phase) = {
         object phase extends StdPhase(prev) {
             def apply(unit: CompilationUnit): Unit = {
-                val typed = getPreliminarilyTyped(unit)
-                val annottees = ourAnnottees(typed)
-                if (annottees.length == 0)
-                    return
+                try {
+                    val typed = getPreliminarilyTyped(unit)
+                    val annottees = ourAnnottees(typed)
+                    if (annottees.length == 0)
+                        return
 
-                val tr = {
-                    val metatree = unit.source.content.parse[Source].get
-                    new ScalametaTransformer(metatree)
-                }
-                attachSourcesToSymbols(typed)
-                for ((md, ans) <- annottees.reverse) {
-                    val companionPos = getCompanionTree(md.symbol)
-                        .map(t => t.pos.start-1)
-                    val start : scala.meta.Stat => scala.meta.Stat = m => m
-                    var fn = (start /: ans) {
-                        (f, an) => getAnnotationFunction(an) compose f
+                    val tr = {
+                        val metatree = unit.source.content.parse[Source].get
+                        new ScalametaTransformer(metatree)
                     }
-                    tr.modify(md.pos.start-1, companionPos, fn)
+                    attachSourcesToSymbols(typed)
+                    for ((md, ans) <- annottees.reverse) {
+                        val companionPos = getCompanionTree(md.symbol)
+                            .map(t => t.pos.start-1)
+                        val start : scala.meta.Stat => scala.meta.Stat = m => m
+                        var fn = (start /: ans) {
+                            (f, an) => getAnnotationFunction(an) compose f
+                        }
+                        tr.modify(md.pos.start-1, companionPos, fn)
+                    }
+                    unit.body = newUnitParser(tr.get().toString()).parse()
+                } catch {
+                    // Use this exception for emergency exits
+                    case ParadiseNgException =>
                 }
-                unit.body = newUnitParser(tr.get().toString()).parse()
             }
         }
         phase
@@ -101,11 +106,7 @@ extends PluginComponent {
 
         /* We take the source code of the parent and try and traverse its tree
            looking for something that looks like our companion object to us. */
-
-        val parent = getSource(owner) match {
-            case Some(p) => p
-            case _ => return None
-        }
+        val parent = getSource(owner).get
 
         var result = None.asInstanceOf[Option[ModuleDef]]
 
@@ -171,7 +172,7 @@ extends PluginComponent {
         try {
             val ct = namer.enterSym(tree)
             val typer = analyzer.newTyper(ct)
-            val result = typer.typed(tree);
+            val result = typer.typed(tree)
 
             // erasing the fake package from the root class
             val decls = rootMirror.RootClass.info.decls
@@ -231,7 +232,7 @@ extends PluginComponent {
     // Loads the annotation functions.
     lazy val retrieveFunction = new ParadiseNgFunctionRetriever(loader)
 
-    def resolveConstant(tree: Tree, maxDepth: Int = 50): Option[AnyRef] = {
+    def resolveConstant(tree: Tree, maxDepth: Int = 15): Option[AnyRef] = {
         if (maxDepth <= 0) {
             None
         } else tree match {
@@ -253,9 +254,32 @@ extends PluginComponent {
     def getAnnotationFunction(annotation: AnnotationInfo):
     scala.meta.Stat => scala.meta.Stat = {
         val withSources = attachSourcesToSymbols(annotation.original)
-        val args = annotation.args.map(xs => resolveConstant(xs).get)
+        val args = annotation.args.map(xs => {
+            resolveConstant(xs) match {
+                case Some(v) => v
+                case None => {
+                    reporter.error(xs.pos,
+                        "couldn't resolve a macro annotation argument; " +
+                        "only constant values are supported")
+                    throw ParadiseNgException
+                }
+            }
+        })
         val cls_name = getClassNameBySymbol(annotation.tpe.typeSymbol)
-        retrieveFunction(cls_name, args)
+        try {
+            retrieveFunction(cls_name, args)
+        } catch {
+            case e: java.lang.NoSuchMethodException =>
+                val name = annotation.tpe.typeSymbol.name
+                val args_str = args.map(x => x.getClass().getSimpleName())
+                    .mkString(", ")
+                reporter.error(annotation.pos,
+                    s"macro annotation $name can't be instantiated with " +
+                    s"($args_str)")
+                throw ParadiseNgException
+        }
     }
+
+    case object ParadiseNgException extends Exception
 
 }
