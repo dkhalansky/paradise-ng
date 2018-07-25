@@ -6,10 +6,9 @@ import java.nio.charset.StandardCharsets
 import scala.meta.internal.tokens.TokenStreamPosition
 import scala.meta.internal.trees.Origin
 import scala.meta.transversers._
+import scala.reflect.ClassTag
 
 object ScalametaTreeStorage {
-
-    import scala.reflect.ClassTag
 
     private case class Storage[T: ClassTag](payload: T, pos: Position)
     extends InputStream {
@@ -68,6 +67,11 @@ object PostOrderTraversal {
                 }
             })(tree)
         }
+
+        def findDfs[U <: Tree: ClassTag](pred: U => Boolean): Option[U] = {
+            traversePostOrder { case t: U if pred(t) => return Some(t) }
+            None
+        }
     }
 }
 
@@ -81,10 +85,7 @@ class ScalametaTransformer(var tree: Tree) {
     }
 
     private def getAt(position: Int) : Stat = {
-        tree.traversePostOrder {
-            case df: Stat if contains(df.getPosition(), position) => return df
-        }
-        return q"{}"
+        tree.findDfs[Stat](t => contains(t.getPosition(), position)).get
     }
 
     private def replaceChild(
@@ -139,26 +140,5 @@ class ScalametaTransformer(var tree: Tree) {
         tree.transform {
             case s => s.getPayload[Tree]().getOrElse(s)
         }
-    }
-}
-
-object ScalametaParser {
-    /* Given a file path, create the tree parsed from the source code that
-       is in the file. */
-    def fromFile(path: String): Tree = {
-        val source = scala.io.Source.fromFile(path)
-        val text = try source.mkString finally source.close()
-        create(text)
-    }
-
-    /* Parse the string into a scalameta tree. */
-    def create(str: String): Tree = {
-        // TODO: error handling
-        str.parse[Source].get
-    }
-
-    /* Parse a char array into a scalameta tree. */
-    def create(str: Array[Char]): Tree = {
-        str.parse[Source].get
     }
 }

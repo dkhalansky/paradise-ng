@@ -28,26 +28,25 @@ extends PluginComponent {
         object phase extends StdPhase(prev) {
             def apply(unit: CompilationUnit): Unit = {
                 val typed = getPreliminarilyTyped(unit)
-                attachSourcesToSymbols(typed)
-                var didApplyAnnotations = false
-                lazy val tr = {
-                    val metatree = ScalametaParser.create(
-                        unit.source.content)
+                val annottees = ourAnnottees(typed)
+                if (annottees.length == 0)
+                    return
+
+                val tr = {
+                    val metatree = unit.source.content.parse[Source].get
                     new ScalametaTransformer(metatree)
                 }
-                for ((md, ans) <- ourAnnottees(typed).reverse) {
-                    val companionPos = getCompanionTree(md)
+                attachSourcesToSymbols(typed)
+                for ((md, ans) <- annottees.reverse) {
+                    val companionPos = getCompanionTree(md.symbol)
                         .map(t => t.pos.start-1)
                     val start : scala.meta.Stat => scala.meta.Stat = m => m
                     var fn = (start /: ans) {
                         (f, an) => getAnnotationFunction(an) compose f
                     }
                     tr.modify(md.pos.start-1, companionPos, fn)
-                    didApplyAnnotations = true
                 }
-                if (didApplyAnnotations) {
-                    unit.body = newUnitParser(tr.get().toString()).parse()
-                }
+                unit.body = newUnitParser(tr.get().toString()).parse()
             }
         }
         phase
@@ -55,9 +54,9 @@ extends PluginComponent {
 
     /* Get the tree corresponding to the companion object of the member,
        if any. */
-    def getCompanionTree(original: MemberDef) : Option[ModuleDef] = {
+    def getCompanionTree(symbol: Symbol) : Option[ModuleDef] = {
         // If the compiler itself can point us to a companion, we trust it.
-        getSource(original.symbol.companion) match {
+        getSource(symbol.companion) match {
             case Some(m) => return Some(m.asInstanceOf[ModuleDef])
             case _ =>
         }
@@ -95,8 +94,8 @@ extends PluginComponent {
            So, if the compiler has told us that it knows nothing about a
            companion object, we trust it if the member was not defined in a
            code block. */
-        val owner = original.symbol.owner
-        if (!owner.isTerm && owner.hasCompleteInfo && !original.symbol.isType) {
+        val owner = symbol.owner
+        if (!owner.isTerm && owner.hasCompleteInfo && !symbol.isType) {
             return None
         }
 
@@ -114,8 +113,8 @@ extends PluginComponent {
             override def traverse(tree: Tree) {
                 tree match {
                     case m : ModuleDef if m.symbol != null &&
-                        m.symbol.name == original.symbol.name.companionName &&
-                        m.symbol.isCoDefinedWith(original.symbol) => {
+                        m.symbol.name == symbol.name.companionName &&
+                        m.symbol.isCoDefinedWith(symbol) => {
                             result = Some(m)
                         }
                     case _ => super.traverse(tree)
@@ -160,29 +159,29 @@ extends PluginComponent {
 
     /* Assign types to the tree as comprehensively as possible. */
     def getPreliminarilyTyped(unit: CompilationUnit): Tree = {
+        val packageIdent = TermName("'paradise-ng")
+        val tree = PackageDef(Ident(packageIdent),
+            List(unit.body.duplicate))
+        val context = analyzer.rootContext(unit).
+            make(tree, scope = newScope)
+        val namer = analyzer.newNamer(context)
+
         val reporter = global.reporter
         global.reporter = new StoreReporter()
-        var result = unit.body
         try {
-            val packageIdent = TermName("'paradise-ng")
-            val tree = PackageDef(Ident(packageIdent),
-                List(unit.body.duplicate))
-            val context = analyzer.rootContext(unit).
-                make(tree, scope = newScope).
-                makeSilent(false)
-            val namer = analyzer.newNamer(context)
             val ct = namer.enterSym(tree)
             val typer = analyzer.newTyper(ct)
-            result = typer.typed(tree);
+            val result = typer.typed(tree);
 
             // erasing the fake package from the root class
             val decls = rootMirror.RootClass.info.decls
             val existing = decls.lookup(packageIdent)
             decls unlink existing
+
+            result
         } finally {
             global.reporter = reporter
         }
-        result
     }
 
     case class SymbolSourceAttachment(source: Tree)
@@ -226,10 +225,11 @@ extends PluginComponent {
         loop(symbol)
     }
 
+    lazy val loader = Reflect.findMacroClassLoader(global.classPath.asURLs,
+        global.settings.outputDirs.getSingleOutput)
+
     // Loads the annotation functions.
-    lazy val retrieveFunction = new ParadiseNgFunctionRetriever(
-        Reflect.findMacroClassLoader(global.classPath.asURLs,
-            global.settings.outputDirs.getSingleOutput))
+    lazy val retrieveFunction = new ParadiseNgFunctionRetriever(loader)
 
     def resolveConstant(tree: Tree, maxDepth: Int = 50): Option[AnyRef] = {
         if (maxDepth <= 0) {
