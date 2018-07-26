@@ -18,7 +18,7 @@ class ParadiseNg(val global: Global) extends Plugin {
 }
 
 class ParadiseNgComponent(plugin: Plugin, val global: Global)
-extends PluginComponent {
+extends PluginComponent with Errors {
     import global._
 
     override val phaseName  = "paradise-ng"
@@ -50,11 +50,17 @@ extends PluginComponent {
                     unit.body = newUnitParser(tr.get().toString()).parse()
                 } catch {
                     // Use this exception for emergency exits
-                    case ParadiseNgException =>
+                    case ParadiseNgException(pos, msg) =>
+                        reporter.error(pos, msg)
                 }
             }
         }
         phase
+    }
+
+    def isRepl = {
+        import scala.tools.nsc.interpreter._
+        global.reporter.isInstanceOf[ReplReporter]
     }
 
     /* Get the tree corresponding to the companion object of the member,
@@ -253,16 +259,15 @@ extends PluginComponent {
        annotated scalameta tree. */
     def getAnnotationFunction(annotation: AnnotationInfo):
     scala.meta.Stat => scala.meta.Stat = {
+        if (currentRun.compiles(annotation.tpe.typeSymbol)) {
+            AnnotationFromCurrentRunError(annotation)
+        }
+
         val withSources = attachSourcesToSymbols(annotation.original)
         val args = annotation.args.map(xs => {
             resolveConstant(xs) match {
                 case Some(v) => v
-                case None => {
-                    reporter.error(xs.pos,
-                        "couldn't resolve a macro annotation argument; " +
-                        "only constant values are supported")
-                    throw ParadiseNgException
-                }
+                case None => UnresolvedMacroParameterError(xs.pos)
             }
         })
         val cls_name = getClassNameBySymbol(annotation.tpe.typeSymbol)
@@ -270,16 +275,8 @@ extends PluginComponent {
             retrieveFunction(cls_name, args)
         } catch {
             case e: java.lang.NoSuchMethodException =>
-                val name = annotation.tpe.typeSymbol.name
-                val args_str = args.map(x => x.getClass().getSimpleName())
-                    .mkString(", ")
-                reporter.error(annotation.pos,
-                    s"macro annotation $name can't be instantiated with " +
-                    s"($args_str)")
-                throw ParadiseNgException
+                NoConstructorError(annotation, args)
         }
     }
-
-    case object ParadiseNgException extends Exception
 
 }
