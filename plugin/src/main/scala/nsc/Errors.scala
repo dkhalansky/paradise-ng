@@ -20,8 +20,9 @@ trait Errors { self: ParadiseNgComponent =>
     }
 
     def AnnotationFromCurrentRunError[T](an: AnnotationInfo): T = {
+        import scala.tools.nsc.interpreter._
         val name = an.tpe.typeSymbol.name
-        val advice = if (isRepl) {
+        val advice = if (reporter.isInstanceOf[ReplReporter]) {
             "it must be on a separate line and without :paste enabled"
         } else {
             "it must be in a separate module"
