@@ -35,7 +35,7 @@ extends PluginComponent {
 
                     val tr = {
                         val metatree = unit.source.content.parse[Source].get
-                        new ScalametaTransformer(metatree)
+                        new meta.ParadiseNgTransformer(metatree)
                     }
                     attachSourcesToSymbols(typed)
                     for ((md, ans) <- annottees.reverse) {
