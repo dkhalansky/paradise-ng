@@ -20,5 +20,22 @@ object Transversers {
             traversePostOrder { case t: U if pred(t) => return Some(t) }
             None
         }
+
+        def findPos[U <: Tree: ClassTag](pos: Position): Option[U] = {
+            val f = (u: U) => return Some(u);
+            (new Traverser {
+                override def apply(tree: Tree) {
+                    val p = tree.pos
+                    if (p.start <= pos.start && p.end >= pos.end) {
+                        super.apply(tree)
+                        tree match {
+                            case u: U => f(u)
+                            case _ =>
+                        }
+                    }
+                }
+            })(tree)
+            None
+        }
     }
 }

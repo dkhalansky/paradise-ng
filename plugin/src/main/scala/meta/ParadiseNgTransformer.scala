@@ -11,7 +11,7 @@ class ParadiseNgTransformer(var tree: Tree) {
     }
 
     private def getAt(position: Int) : Stat = {
-        tree.findDfs[Stat](t => contains(t.getPosition(), position)).get
+        tree.findPos[Stat](Position.Range(null, position, position+1)).get
     }
 
     private def replaceChild(
