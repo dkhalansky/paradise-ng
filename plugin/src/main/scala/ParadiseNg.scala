@@ -35,26 +35,47 @@ with AnnotationFunctions
                 try {
                     val annottees = withTyped(unit) { typed =>
                         attachSourcesToSymbols(typed)
-                        ourAnnottees(typed).map { case (md, ans) =>
-                            val companionPos = getCompanionTree(md.symbol)
-                                .map(t => t.pos.start-1)
+                        ourAnnottees(typed).map { case (md, ans, depth) =>
+                            val companion = getCompanionTree(md.symbol)
                             val start : Stat => Stat = m => m
                             var fn = (start /: ans) {
                                 (f, an) => getAnnotationFunction(an) compose f
                             }
-                            (md.pos.start-1, companionPos, fn)
+                            /* Increase the depth if we're dealing with a
+                               companion object. This is done so that a
+                               companion object is always processed before
+                               the accompanied definition is.
+
+                                   @D
+                                   class A // depth = 1; recDepth = 1
+
+                                   @C
+                                   object A // depth = 1; recDepth = 2
+                                   { // depth = 2: blocks are separate trees
+                                       @B
+                                       class E // depth = 3; recDepth = 3
+                                   }
+                            */
+                            val recDepth = depth +
+                                md.isInstanceOf[ModuleDef].compare(false)
+                            (recDepth, md, companion, fn)
                         }
                     }
                     if (annottees.length == 0)
                         return
+
+                    /* sort in order of decreasing depth so we process
+                       children before their parents. */
+                    val sorted = annottees.sortWith { _._1 > _._1 }
 
                     val tr = {
                         val metatree = unit.source.content.parse[Source].get
                         new meta.ParadiseNgTransformer(metatree)
                     }
 
-                    for ((pos, cpos, fn) <- annottees.reverse) {
-                        tr.modify(pos, cpos, fn)
+                    for ((_, md, comp, fn) <- sorted) {
+                        tr.modify(md.pos.start-1,
+                            comp.map(t => t.pos.start-1), fn)
                     }
 
                     unit.body = newUnitParser(tr.get().toString()).parse()
@@ -76,10 +97,12 @@ with AnnotationFunctions
     }
 
     /* Find the subtrees that are annotated using ParadiseNg's annotations,
-       alongside with the relevant annotation definitions. */
-    def ourAnnottees(tree: Tree): List[(MemberDef, List[AnnotationInfo])] = {
+       alongside with the relevant annotation definitions and the depth on
+       which the tree was encountered. */
+    def ourAnnottees(tree: Tree) = {
         import scala.collection.mutable.ArrayBuffer
-        var buffer = new ArrayBuffer[(MemberDef, List[AnnotationInfo])]
+        var buffer = new ArrayBuffer[(MemberDef, List[AnnotationInfo], Int)]
+        var depth = 0
         object annoteesTraverser extends Traverser {
             override def traverse(tree: Tree) {
                 tree match {
@@ -87,17 +110,19 @@ with AnnotationFunctions
                         val true_annots = tree.symbol.annotations.filter(
                             isOurTypedAnnotation)
                         if (true_annots.length > 0) {
-                            buffer += ((md, true_annots))
+                            buffer += ((md, true_annots, depth))
                         }
                     }
                     case _ =>
                 }
+                depth += 1
                 super.traverse(tree)
+                depth -= 1
             }
         }
         annoteesTraverser.traverse(tree)
         buffer.to[List]
-    }
+    } : List[(MemberDef, List[AnnotationInfo], Int)]
 
     /* Assign types to the tree as comprehensively as possible. */
     def withTyped[T](unit: CompilationUnit)(fn: Tree => T): T = {
