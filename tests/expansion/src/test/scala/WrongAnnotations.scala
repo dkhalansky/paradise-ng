@@ -1,15 +1,22 @@
 package testWrongAnnotations
 import scala.annotation.StaticAnnotation
+import test.macros._
+import org.scalatest.FunSuite
 
 class FooAnnotation extends StaticAnnotation {}
 
 // The compiler should not recognize this annotation
 // as its own, despite the name
-@testWrongAnnotations.FooAnnotation
-class Hello { }
+@FooAnnotation
+class Hello {
+    def bar() = 1
+}
 
-class Foo { }
+class WrongAnnotations extends FunSuite {
 
-class Main {
-    def main(args: Array[String]) = { }
+    test("Locally-defined classes shadow the annotations") {
+        val hello = new Hello
+        assert(hello.bar() === 1)
+    }
+
 }

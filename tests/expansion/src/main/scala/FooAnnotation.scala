@@ -6,7 +6,7 @@ class FooAnnotation extends ParadiseNgAnnotation {
   def apply(annottee: Stat): Stat = {
       q"""
         class Foo {
-            def bar() = println("bar")
+            def bar() = 15 + 16
         }
       """
   }
