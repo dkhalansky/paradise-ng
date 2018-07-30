@@ -15,7 +15,6 @@ class ParadiseNgTransformer(var tree: Tree) {
     }
 
     private def replaceChild(
-        parent: Tree,
         child: Stat,
         newchildren: List[Stat]
     ) : Tree = {
@@ -23,7 +22,8 @@ class ParadiseNgTransformer(var tree: Tree) {
             case v if v.equals(child) => newchildren
             case v => List(v)
         }
-        child.parent.get match {
+        val parent = child.parent.get
+        parent.getPayload[Tree]().getOrElse(parent) match {
             case o @ Template(_, _, _, stats) => o.copy(stats = newStats(stats))
             case o @ Source(stats)            => o.copy(stats = newStats(stats))
             case o @ Term.Block(stats)        => o.copy(stats = newStats(stats))
@@ -44,7 +44,7 @@ class ParadiseNgTransformer(var tree: Tree) {
                 companion match {
                     case None => {
                         val parent = tree.parent.get
-                        parent storePayload replaceChild(parent, tree, lst)
+                        parent storePayload replaceChild(tree, lst)
                     }
                     case Some(p) => p storePayload c
                 }
@@ -55,7 +55,7 @@ class ParadiseNgTransformer(var tree: Tree) {
                     case None =>
                     case Some(p) => {
                         val parent = p.parent.get
-                        parent storePayload replaceChild(parent, p, List())
+                        parent storePayload replaceChild(p, List())
                     }
                 }
             }
