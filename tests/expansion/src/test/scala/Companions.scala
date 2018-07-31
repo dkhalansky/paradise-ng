@@ -106,5 +106,51 @@ class Companions extends FunSuite {
         assert(v2.baz === 2048)
     }
 
+    test("Neighbors don't share companions") {
+        @AppendBarToCompanion
+        class M {
+            def baz() = 1024
+        }
+
+        object M
+
+        assert(M.bar === 42);
+
+        object D {}
+
+        {
+            @AppendBarToCompanion
+            class M {
+                def baz() = 1024
+            }
+
+            object M
+
+            assert(M.bar === 42)
+        }
+
+        {
+            @AppendBarToCompanion
+            class M {
+                def baz() = 1024
+            }
+
+            object M
+
+            assert(M.bar === 42)
+        }
+
+        object C {
+            @AppendBarToCompanion
+            class M {
+                def baz() = 1024
+            }
+
+            object M
+        }
+
+        assert(C.M.bar === 42)
+    }
+
 }
 

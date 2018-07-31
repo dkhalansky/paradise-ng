@@ -50,27 +50,30 @@ trait Companions { self: ParadiseNgComponent =>
             return None
         }
 
-        /* We take the source code of the parent and try and traverse its tree
-           looking for something that looks like our companion object to us. */
-        val parent = owner.source.get
-
-        var result = None.asInstanceOf[Option[ModuleDef]]
-
-        object traverser extends Traverser {
+        // We try to find the real parent tree of the original one.
+        var parent = null.asInstanceOf[Tree]
+        object parentFinder extends Traverser {
+            var ourTreeIsChild = false
             override def traverse(tree: Tree) {
-                tree match {
-                    case m : ModuleDef if m.symbol != null &&
-                        m.symbol.name == symbol.name.companionName &&
-                        m.symbol.isCoDefinedWith(symbol) => {
-                            result = Some(m)
-                        }
-                    case _ => super.traverse(tree)
+                if (ourTreeIsChild) {
+                    return
+                } else if (tree.symbol == symbol && tree.isInstanceOf[MemberDef]) {
+                    ourTreeIsChild = true;
+                } else {
+                    super.traverse(tree)
+                    if (ourTreeIsChild) {
+                        ourTreeIsChild = false
+                        parent = tree
+                    }
                 }
             }
         }
-        traverser.traverse(parent)
+        parentFinder(owner.source.get)
 
-        result
+        // We try to find among the children of our parent a companion object.
+        parent.children.find(m => m.isInstanceOf[ModuleDef] &&
+            m.symbol != null && m.symbol.name == symbol.name.companionName &&
+            m.symbol.isCoDefinedWith(symbol)).map(m => m.asInstanceOf[ModuleDef])
     }
 
 }
