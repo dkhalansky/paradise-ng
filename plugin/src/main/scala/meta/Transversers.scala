@@ -21,11 +21,14 @@ object Transversers {
             None
         }
 
-        def findPos[U <: Tree: ClassTag](pos: Position): Option[U] = {
+        def findPos[U <: Tree: ClassTag](
+            pos: Position,
+            posGetter: Tree => Position = t => t.pos
+        ): Option[U] = {
             val f = (u: U) => return Some(u);
             (new Traverser {
                 override def apply(tree: Tree) {
-                    val p = tree.pos
+                    val p = posGetter(tree)
                     if (p.start <= pos.start && p.end >= pos.end) {
                         super.apply(tree)
                         tree match {
