@@ -86,5 +86,25 @@ class Companions extends FunSuite {
         assert(E.foo === 43)
     }
 
+    test("Many companion objects can be created") {
+        @AppendBarToCompanion
+        class M {
+            def baz() = 1024
+        }
+
+        @AppendBarToCompanion
+        class N {
+            def baz() = 2048
+        }
+
+        val v1 = new M
+        val v2 = new N
+
+        assert(N.bar === 42)
+        assert(M.bar === 42)
+        assert(v1.baz === 1024)
+        assert(v2.baz === 2048)
+    }
+
 }
 

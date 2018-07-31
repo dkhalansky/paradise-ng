@@ -11,28 +11,47 @@ class ParadiseNgTransformer(var tree: Tree) {
     }
 
     private def getAt(position: Int) : Stat = {
-        tree.findPos[Stat](Position.Range(null, position, position+1),
-            t => t.getPosition()).get
+        val f = (u: Stat) => return u;
+        (new Traverser {
+            override def apply(tree: Tree) {
+                val p = tree.getPosition()
+                if (p.start <= position && p.end >= position + 1) {
+                    super.apply(tree.getPayload[Tree]().getOrElse(tree))
+                    tree match {
+                        case u: Stat => f(u)
+                        case _ =>
+                    }
+                }
+            }
+        })(tree)
+        None.get
     }
 
-    private def replaceChild(
-        child: Stat,
-        newchildren: List[Stat]
-    ) : Tree = {
+    private def replaceChild(parent: Tree, child: Stat, newchildren: List[Stat])
+    = {
         def newStats(old: List[Stat]) : List[Stat] = old.flatMap {
             case v if v.equals(child) => newchildren
             case v => List(v)
         }
-        val parent = child.parent.get
-        parent.getPayload[Tree]().getOrElse(parent) match {
-            case o @ Template(_, _, _, stats) => o.copy(stats = newStats(stats))
+        val newParent = parent.getPayload[Tree]().getOrElse(parent) match {
+            case o @ Template(a, b, c, stats) => o.copy(stats = newStats(stats))
             case o @ Source(stats)            => o.copy(stats = newStats(stats))
             case o @ Term.Block(stats)        => o.copy(stats = newStats(stats))
-            case o @ Pkg(_, stats)            => o.copy(stats = newStats(stats))
+            case o @ Pkg(a, stats)            => o.copy(stats = newStats(stats))
+        }
+        parent storePayload newParent
+    }
+
+    private def eval(tree: Tree): Tree = {
+        tree.transform {
+            case s => s.getPayload[Tree]().getOrElse(s)
         }
     }
 
     def modify(position: Int, companionPos: Option[Int], fn: Stat => Stat) {
+        val nonShadowTree = this.tree.findPos[Stat](
+            Position.Range(null, position, position+1), t => t.getPosition).get
+        val nonShadowParent = nonShadowTree.parent.get
         val tree = getAt(position)
         val companion = companionPos.map(getAt)
         val arg = companion.map(c => Term.Block(List(tree, c))).getOrElse(tree)
@@ -41,31 +60,23 @@ class ParadiseNgTransformer(var tree: Tree) {
         }).asInstanceOf[Stat])
         expanded match {
             case Term.Block(lst @ List(t, c)) => {
-                tree storePayload t
                 companion match {
-                    case None => {
-                        val parent = tree.parent.get
-                        parent storePayload replaceChild(tree, lst)
+                    case None => replaceChild(nonShadowParent, tree, lst)
+                    case Some(p) => {
+                        tree storePayload t
+                        p storePayload c
                     }
-                    case Some(p) => p storePayload c
                 }
             }
             case t => {
                 tree storePayload t
                 companion match {
                     case None =>
-                    case Some(p) => {
-                        val parent = p.parent.get
-                        parent storePayload replaceChild(p, List())
-                    }
+                    case Some(p) => replaceChild(nonShadowParent, p, List())
                 }
             }
         }
     }
 
-    def get(): Tree = {
-        tree.transform {
-            case s => s.getPayload[Tree]().getOrElse(s)
-        }
-    }
+    def get(): Tree = eval(tree)
 }
