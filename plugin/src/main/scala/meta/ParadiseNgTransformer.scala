@@ -58,6 +58,9 @@ class ParadiseNgTransformer(var tree: Tree) {
         val expanded = fn((arg.transform {
             case s => s.getPayload[Tree]().getOrElse(s)
         }).asInstanceOf[Stat])
+        val removeCompanion = () => {
+            companion map (c => replaceChild(nonShadowParent, c, List()))
+        }
         expanded match {
             case Term.Block(lst @ List(t, c)) => {
                 companion match {
@@ -68,12 +71,13 @@ class ParadiseNgTransformer(var tree: Tree) {
                     }
                 }
             }
+            case Term.Block(lst) => {
+                replaceChild(nonShadowParent, tree, lst)
+                removeCompanion()
+            }
             case t => {
                 tree storePayload t
-                companion match {
-                    case None =>
-                    case Some(p) => replaceChild(nonShadowParent, p, List())
-                }
+                removeCompanion()
             }
         }
     }
