@@ -54,5 +54,37 @@ class Companions extends FunSuite {
         assert(B.bar === 42)
     }
 
+    test("Annotated companion object is modified") {
+        @AppendBarToCompanion
+        class F {
+            def baz() = 16
+        }
+
+        @AppendFooToObject
+        object F
+
+        val v = new F
+
+        assert(v.baz === 16)
+        assert(F.bar === 42)
+        assert(F.foo === 43)
+    }
+
+    test("Annotated companion object is modified [if the object is above]") {
+        @AppendFooToObject
+        object E
+
+        @AppendBarToCompanion
+        class E {
+            def baz() = 16
+        }
+
+        val v = new E
+
+        assert(v.baz === 16)
+        assert(E.bar === 42)
+        assert(E.foo === 43)
+    }
+
 }
 
