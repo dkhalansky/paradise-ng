@@ -22,6 +22,18 @@ class HelloAnnotations extends FunSuite {
         assert(SupVenus() === "Sup, Venus!")
     }
 
+    test("Addressing constants works") {
+        val venus = "Venus"
+        @HelloSomething(world = venus, hello = "Sup")
+        def nothing() { }
+        assert(SupVenus() === "Sup, Venus!")
+
+        val hello = "Howdy"
+        @HelloSomething(hello, venus)
+        def nothing() { }
+        assert(HowdyVenus() === "Howdy, Venus!")
+    }
+
     /*
     test("Using the default values in parameters works") {
         @HelloSomething("Hello")
