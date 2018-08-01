@@ -11,7 +11,7 @@ trait Errors { self: ParadiseNgComponent =>
             "only constant values are supported")
     }
 
-    def NoConstructorError[T](an: AnnotationInfo, args: Seq[AnyRef]): T = {
+    def NoConstructorError[T](an: AnnotationInfo, args: Seq[Any]): T = {
         val name = an.tpe.typeSymbol.name
         val argsStr = args.map(x => x.getClass().getSimpleName())
             .mkString(", ")

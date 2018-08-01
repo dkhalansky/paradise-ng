@@ -24,11 +24,11 @@ trait AnnotationFunctions { self: ParadiseNgComponent =>
     // Loads the annotation functions.
     private lazy val retrieveFunction = new ParadiseNgFunctionRetriever(loader)
 
-    private def getParameter(tree: Tree, maxDepth: Int = 15): Option[AnyRef] = {
+    private def getParameter(tree: Tree, maxDepth: Int = 15): Option[Any] = {
         if (maxDepth <= 0) {
             None
         } else tree match {
-            case Literal(Constant(v)) => Some(v.asInstanceOf[AnyRef])
+            case Literal(Constant(v)) => Some(v)
             case s if s.symbol != null && s.symbol != NoSymbol => {
                 s.symbol.source match {
                     case Some(ValDef(_, _, _, v)) => {

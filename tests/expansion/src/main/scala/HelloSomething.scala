@@ -9,3 +9,11 @@ extends ParadiseNgAnnotation {
       q"""def $name() = $hello + ", " + $world + "!""""
   }
 }
+
+class HelloPrimitives(val int: Int, val dbl: Double, val bt: Byte)
+extends ParadiseNgAnnotation {
+    def apply(annottee: Stat): Stat = {
+        val name = Term.Name("hello" + int.toString)
+        q"def $name() = $dbl + ${bt.asInstanceOf[Int]} * $int"
+    }
+}

@@ -34,6 +34,11 @@ class HelloAnnotations extends FunSuite {
         assert(HowdyVenus() === "Howdy, Venus!")
     }
 
+    test("Various types of parameters work") {
+        @HelloPrimitives(3, 3.0, 3) def nothing() { }
+        assert(hello3() === 3.0 + 3 * 3)
+    }
+
     /*
     test("Using the default values in parameters works") {
         @HelloSomething("Hello")
