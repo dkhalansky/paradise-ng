@@ -40,3 +40,24 @@ class AppendFooToObject extends ParadiseNgAnnotation {
         }
     }
 }
+
+class ReplaceCompanion extends ParadiseNgAnnotation {
+    override def apply(annottee: Stat): Stat = {
+        val foo = q"def foo() = 43"
+        annottee match {
+            case Term.Block(Seq(m: Defn, c: Defn.Object)) => {
+                Term.Block(List(m, q"object ${c.name} { def foo() = 1556 }"))
+            }
+            case _ => annottee
+        }
+    }
+}
+
+class FailIfCompanionExists extends ParadiseNgAnnotation {
+    override def apply(annottee: Stat): Stat = {
+        annottee match {
+            case c: Term.Block => None.get
+            case _ => annottee
+        }
+    }
+}

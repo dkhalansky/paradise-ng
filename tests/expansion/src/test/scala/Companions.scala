@@ -152,5 +152,68 @@ class Companions extends FunSuite {
         assert(C.M.bar === 42)
     }
 
-}
+    test("Everything that should have a companion, has one") {
+        @ReplaceCompanion
+        class A
+        object A
+        assert(A.foo === 1556)
 
+        @ReplaceCompanion
+        trait B
+        object B
+        assert(B.foo === 1556)
+
+        @ReplaceCompanion
+        type C = Int
+        object C
+        assert(C.foo === 1556)
+    }
+
+    test("Everything that shouldn't have a companion, doesn't") {
+
+        /* there is a bug in scalac itself:
+
+               def f() {
+                   class A
+                   def a() {
+                       object A
+                   }
+               }
+
+           fails. Our code that looks for companion objects is sometimes more
+           accurate than the reference one! (it was a tongue-in-a-cheek since
+           our code for finding companions is ugly).
+
+           So, we have to wrap it all in an object or a class to perform tests.
+        */
+        object Failsafe {
+            @FailIfCompanionExists
+            class A
+            if (3 < 4) {
+                object A
+            }
+            def a() {
+                object A
+            }
+
+            @FailIfCompanionExists
+            trait B
+            def b() {
+                object B
+            }
+
+            @FailIfCompanionExists
+            type C = Int
+            if (3 < 4) {
+                object C
+            }
+            {
+                object C
+            }
+            def c() {
+                object C
+            }
+        }
+    }
+
+}
