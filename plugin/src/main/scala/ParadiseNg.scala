@@ -39,7 +39,7 @@ with AnnotationFunctions
                                 .map(t => t.pos.start-1)
                             val start : Stat => Stat = m => m
                             var fn = (start /: ans) {
-                                (f, an) => getAnnotationFunction(an) compose f
+                                (f, a) => getAnnotationFunction(a._1) compose f
                             }
                             (md.pos.start-1, companion, fn)
                         }

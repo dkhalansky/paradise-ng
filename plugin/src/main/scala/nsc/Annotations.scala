@@ -13,18 +13,20 @@ trait Annotations extends Companions { self: ParadiseNgComponent =>
     }
 
     /* Find the subtrees that are annotated using ParadiseNg's annotations,
-       alongside with the relevant annotation definitions and the depth on
-       which the tree was encountered. */
+       alongside with the relevant annotation definitions, their indices, and
+       the depth on which the tree was encountered. */
     private def ourAnnottees(tree: Tree) = {
         import scala.collection.mutable.ArrayBuffer
-        var buffer = new ArrayBuffer[(MemberDef, List[AnnotationInfo], Int)]
+        var buffer = new ArrayBuffer[
+            (MemberDef, List[(AnnotationInfo, Int)], Int)
+        ]
         var depth = 0
         object annoteesTraverser extends Traverser {
             override def traverse(tree: Tree) {
                 tree match {
                     case md: MemberDef if tree.symbol != null => {
-                        val true_annots = tree.symbol.annotations.filter(
-                            isOurTypedAnnotation)
+                        val true_annots = tree.symbol.annotations.
+                            zipWithIndex.filter(a => isOurTypedAnnotation(a._1))
                         if (!true_annots.isEmpty) {
                             buffer += ((md, true_annots, depth))
                         }
@@ -40,7 +42,7 @@ trait Annotations extends Companions { self: ParadiseNgComponent =>
         buffer.to[List]
     }
 
-    def annottees(tree: Tree) : List[(MemberDef, List[AnnotationInfo])]  = {
+    def annottees(tree: Tree) = {
         ourAnnottees(tree)
             /* Increase the depth if we're dealing with a companion object.
                This is done so that a companion object is always processed
@@ -66,6 +68,6 @@ trait Annotations extends Companions { self: ParadiseNgComponent =>
             /* We no longer need to know the depth, everything is ordered
                already. */
             .map({ case (_, md, ans) => (md, ans) })
-    }
+    } : List[(MemberDef, List[(AnnotationInfo, Int)])]
 
 }
