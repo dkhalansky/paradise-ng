@@ -48,7 +48,10 @@ class ParadiseNgTransformer(var tree: Tree) {
         }
     }
 
-    def modify(position: Int, companionPos: Option[Int], fn: Stat => Stat) {
+    def modify(position: Int, companionPos: Option[Int],
+        ans: List[(Stat => Stat, Int)])
+    {
+        val fn = (((m: Stat) => m) /: ans) { (f, a) => a._1 compose f }
         val nonShadowTree = this.tree.findPos[Stat](
             Position.Range(null, position, position+1), t => t.getPosition).get
         val nonShadowParent = nonShadowTree.parent.get

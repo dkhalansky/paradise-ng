@@ -37,11 +37,10 @@ with AnnotationFunctions
                         annottees(typed).map { case (md, ans) =>
                             val companion = getCompanionTree(md.symbol)
                                 .map(t => t.pos.start-1)
-                            val start : Stat => Stat = m => m
-                            var fn = (start /: ans) {
-                                (f, a) => getAnnotationFunction(a._1) compose f
+                            val nans = ans map { case (an, ix) =>
+                                (getAnnotationFunction(an), ix)
                             }
-                            (md.pos.start-1, companion, fn)
+                            (md.pos.start-1, companion, nans)
                         }
                     }
                     if (ants.isEmpty)
@@ -52,8 +51,8 @@ with AnnotationFunctions
                         new meta.ParadiseNgTransformer(metatree)
                     }
 
-                    for ((md, comp, fn) <- ants) {
-                        tr.modify(md, comp, fn)
+                    for ((md, comp, ans) <- ants) {
+                        tr.modify(md, comp, ans)
                     }
 
                     unit.body = newUnitParser(tr.get().toString()).parse()
