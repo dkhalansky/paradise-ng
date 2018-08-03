@@ -14,8 +14,7 @@ class ParadiseNgTransformer(var tree: Tree) {
         val f = (u: Stat) => return u;
         (new Traverser {
             override def apply(tree: Tree) {
-                val p = tree.getPosition()
-                if (p.start <= position && p.end >= position + 1) {
+                if (contains(tree.getPosition(), position)) {
                     super.apply(tree.getPayload[Tree]().getOrElse(tree))
                     tree match {
                         case u: Stat => f(u)
@@ -42,19 +41,20 @@ class ParadiseNgTransformer(var tree: Tree) {
         parent storePayload newParent
     }
 
-    private def eval(tree: Tree): Tree = {
-        tree.transform {
-            case s => s.getPayload[Tree]().getOrElse(s)
-        }
+    private def eval(tree: Tree) = tree.transform {
+        case s => s.getPayload[Tree]().getOrElse(s)
     }
 
     def modify(position: Int, companionPos: Option[Int],
         ans: List[(Stat => Stat, Int)])
     {
         val fn = (((m: Stat) => m) /: ans) { (f, a) => a._1 compose f }
-        val nonShadowTree = this.tree.findPos[Stat](
-            Position.Range(null, position, position+1), t => t.getPosition).get
-        val nonShadowParent = nonShadowTree.parent.get
+        val nonShadowParent = {
+            val nonShadowTree = this.tree.findPos[Stat](
+                Position.Range(null, position, position+1),
+                t => t.getPosition).get
+            nonShadowTree.parent.get
+        }
         val tree = getAt(position)
         val companion = companionPos.map(getAt)
         val arg = companion.map(c => Term.Block(List(tree, c))).getOrElse(tree)

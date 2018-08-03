@@ -35,19 +35,15 @@ object TreeStorage {
             tree
         }
 
-        def getPayload[U: ClassTag](): Option[U] = {
-            originField(tree).get(tree) match {
-                case Origin.Parsed(Input.Stream(Storage(p: U, _), _), _, _)
-                    => Some(p)
-                case _ => None
-            }
+        def getPayload[U: ClassTag]() = originField(tree).get(tree) match {
+            case Origin.Parsed(Input.Stream(Storage(p: U, _), _), _, _) =>
+                Some(p)
+            case _ => None
         }
 
-        def getPosition(): Position = {
-            originField(tree).get(tree) match {
-                case Origin.Parsed(Input.Stream(Storage(_, p), _), _, _) => p
-                case _ => tree.pos
-            }
+        def getPosition(): Position = originField(tree).get(tree) match {
+            case Origin.Parsed(Input.Stream(Storage(_, p), _), _, _) => p
+            case _ => tree.pos
         }
     }
 

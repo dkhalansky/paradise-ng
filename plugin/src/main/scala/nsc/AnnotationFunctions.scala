@@ -29,14 +29,12 @@ trait AnnotationFunctions { self: ParadiseNgComponent =>
             None
         } else tree match {
             case Literal(Constant(v)) => Some(v)
-            case s if s.symbol != null && s.symbol != NoSymbol => {
+            case s if s.symbol != null && s.symbol != NoSymbol =>
                 s.symbol.source match {
-                    case Some(ValDef(_, _, _, v)) => {
+                    case Some(ValDef(_, _, _, v)) =>
                         getParameter(v, maxDepth - 1)
-                    }
                     case _ => None
                 }
-            }
             case _ => None
         }
     }
@@ -57,9 +55,7 @@ trait AnnotationFunctions { self: ParadiseNgComponent =>
             }
         })
         val cls_name = getClassNameBySymbol(annotation.tpe.typeSymbol)
-        try {
-            retrieveFunction(cls_name, args)
-        } catch {
+        try retrieveFunction(cls_name, args) catch {
             case e: java.lang.NoSuchMethodException =>
                 NoConstructorError(annotation, args)
         }

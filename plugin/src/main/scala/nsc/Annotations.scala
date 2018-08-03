@@ -3,6 +3,7 @@ package localhost.plugin
 trait Annotations extends Companions { self: ParadiseNgComponent =>
 
     import global._
+    private type AnInfos = List[(AnnotationInfo, Int)]
 
     /* Given an AnnotationInfo (received by typechecking a tree and looking at
        the list of annotations for a symbol), determine if it belongs to
@@ -17,11 +18,9 @@ trait Annotations extends Companions { self: ParadiseNgComponent =>
        the depth on which the tree was encountered. */
     private def ourAnnottees(tree: Tree) = {
         import scala.collection.mutable.ArrayBuffer
-        var buffer = new ArrayBuffer[
-            (MemberDef, List[(AnnotationInfo, Int)], Int)
-        ]
-        var depth = 0
+        var buffer = new ArrayBuffer[(MemberDef, AnInfos, Int)]
         object annoteesTraverser extends Traverser {
+            var depth = 0
             override def traverse(tree: Tree) {
                 tree match {
                     case md: MemberDef if tree.symbol != null => {
@@ -42,7 +41,7 @@ trait Annotations extends Companions { self: ParadiseNgComponent =>
         buffer.to[List]
     }
 
-    def annottees(tree: Tree) = {
+    def annottees(tree: Tree): List[(MemberDef, AnInfos)] = {
         ourAnnottees(tree)
             /* Increase the depth if we're dealing with a companion object.
                This is done so that a companion object is always processed
@@ -58,16 +57,16 @@ trait Annotations extends Companions { self: ParadiseNgComponent =>
                        class E // depth = 3; recDepth = 3
                    }
             */
-            .map({ case (md, ans, depth) =>
-                val recDepth = depth + md.isInstanceOf[ModuleDef].compare(false)
-                (recDepth, md, ans)
+            .map({
+                case (md: ModuleDef, ans, depth) => (md, ans, depth+1)
+                case (md,            ans, depth) => (md, ans, depth)
             })
             /* sort in order of decreasing depth so we process children before
                their parents. */
-            .sortWith { _._1 > _._1 }
+            .sortWith { _._3 > _._3 }
             /* We no longer need to know the depth, everything is ordered
                already. */
-            .map({ case (_, md, ans) => (md, ans) })
-    } : List[(MemberDef, List[(AnnotationInfo, Int)])]
+            .map({ case (md, ans, _) => (md, ans) })
+    }
 
 }
