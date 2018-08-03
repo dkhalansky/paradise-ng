@@ -48,7 +48,21 @@ class ParadiseNgTransformer(var tree: Tree) {
     def modify(position: Int, companionPos: Option[Int],
         ans: List[(Stat => Stat, Int)])
     {
-        val fn = (((m: Stat) => m) /: ans) { (f, a) => a._1 compose f }
+        val fn = {
+            import Modifiers._
+            val badIndices = ans map { m => m._2 }
+            val removeAnnots = (m: Defn) =>m.transformMods { mods =>
+                mods.zipWithIndex
+                    .filter { m => !badIndices.contains(m._2) }
+                    .map { m => m._1 }
+            }
+            val initial = (s: Stat) => (s match {
+                case m: Defn => removeAnnots(m)
+                case Term.Block(Seq(t1: Defn, t2)) =>
+                    Term.Block(List(removeAnnots(t1), t2))
+            }): Stat
+            (initial /: ans) { (f, a) => a._1 compose f }
+        }
         val nonShadowParent = {
             val nonShadowTree = this.tree.findPos[Stat](
                 Position.Range(null, position, position+1),
