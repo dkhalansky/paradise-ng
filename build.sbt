@@ -30,6 +30,14 @@ def pluginOptions(jar: File): Seq[String] = Seq(
     "-Jdummy="  + jar.lastModified
 )
 
+/* Make it possible to find the classpath and plugin path that are necessary for
+   testing the REPL in runtime. */
+def exposePaths(pluginJar: File, classpath: Seq[File]) {
+    System.setProperty("sbt.paths.plugin.jar", pluginJar.getAbsolutePath)
+    System.setProperty("sbt.paths.repl.test.classes",
+        classpath.map(_.getAbsolutePath).mkString(java.io.File.pathSeparator))
+}
+
 // TESTS ///////////////////////////////////////////////////////////////////////
 
 lazy val testSettings = Def.settings(
@@ -45,9 +53,24 @@ lazy val expansionTests = (project in file("tests/expansion")).
     dependsOn(paradiseNgLib).
     settings(testSettings)
 
+// TESTS OF THE REPL ///
+
+lazy val replTests = (project in file("tests/repl")).
+    dependsOn(paradiseNgLib).
+    settings(
+        testSettings,
+        libraryDependencies +=
+            scalaOrganization.value % "scala-compiler" % scalaVersion.value,
+        fullClasspath in Test := {
+            val defaultValue = (fullClasspath in Test).value
+            exposePaths(jar.value, defaultValue.files)
+            defaultValue
+        }
+    )
+
 // AGGREGATE TEST PROJECT /////////////
 
-lazy val tests = project.aggregate(expansionTests)
+lazy val tests = project.aggregate(expansionTests, replTests)
 
 // MAIN PROJECT ///////////////////////////////////////////////////////////////
 
