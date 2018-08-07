@@ -22,6 +22,7 @@ with Errors
 with SymbolSources
 with Annotations
 with AnnotationFunctions
+with ReplIntegration
 {
     import global._
 
@@ -56,6 +57,7 @@ with AnnotationFunctions
                     }
 
                     unit.body = newUnitParser(tr.get().toString()).parse()
+                    updateReplHandlers(unit.body)
                 } catch {
                     // Use this exception for emergency exits
                     case ParadiseNgException(pos, msg) =>
