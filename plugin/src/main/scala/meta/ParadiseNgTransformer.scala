@@ -1,5 +1,6 @@
 package localhost.plugin.meta
 import scala.meta._
+import localhost.lib._
 
 /* Given a tree, apply a series of transformations to it. */
 class ParadiseNgTransformer(var tree: Tree) {
@@ -46,7 +47,7 @@ class ParadiseNgTransformer(var tree: Tree) {
     }
 
     def modify(position: Int, companionPos: Option[Int],
-        ans: List[(Stat => Stat, Int)])
+        ans: List[(ParadiseNgAnnotation, Int)])
     {
         val fn = {
             import Modifiers._
@@ -61,7 +62,7 @@ class ParadiseNgTransformer(var tree: Tree) {
                 case Term.Block(Seq(t1: Defn, t2)) =>
                     Term.Block(List(removeAnnots(t1), t2))
             }): Stat
-            (initial /: ans) { (f, a) => a._1 compose f }
+            (initial /: ans) { (f, a) => (a._1(_)) compose f }
         }
         val nonShadowParent = {
             val nonShadowTree = this.tree.findPos[Stat](

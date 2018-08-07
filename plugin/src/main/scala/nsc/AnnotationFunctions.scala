@@ -1,4 +1,5 @@
 package localhost.plugin
+import localhost.lib._
 
 trait AnnotationFunctions { self: ParadiseNgComponent =>
 
@@ -21,9 +22,6 @@ trait AnnotationFunctions { self: ParadiseNgComponent =>
     private lazy val loader = Reflect.findMacroClassLoader(
         global.classPath.asURLs, global.settings.outputDirs.getSingleOutput)
 
-    // Loads the annotation functions.
-    private lazy val retrieveFunction = new ParadiseNgFunctionRetriever(loader)
-
     private def getParameter(tree: Tree, maxDepth: Int = 15): Option[Any] = {
         if (maxDepth <= 0) {
             None
@@ -39,10 +37,8 @@ trait AnnotationFunctions { self: ParadiseNgComponent =>
         }
     }
 
-    /* From annotation defition acquire the function to be applied to the
-       annotated scalameta tree. */
-    def getAnnotationFunction(annotation: AnnotationInfo):
-    scala.meta.Stat => scala.meta.Stat = {
+    /* From annotation defition acquire an instance of the annotation class. */
+    def getAnnotationFunction(annotation: AnnotationInfo) = {
         if (currentRun.compiles(annotation.tpe.typeSymbol)) {
             AnnotationFromCurrentRunError(annotation)
         }
@@ -55,7 +51,8 @@ trait AnnotationFunctions { self: ParadiseNgComponent =>
             }
         })
         val cls_name = getClassNameBySymbol(annotation.tpe.typeSymbol)
-        try retrieveFunction(cls_name, args) catch {
+        try Reflect.instantiate[ParadiseNgAnnotation](loader, cls_name, args)
+        catch {
             case e: java.lang.NoSuchMethodException =>
                 NoConstructorError(annotation, args)
         }

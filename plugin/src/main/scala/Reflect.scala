@@ -87,18 +87,3 @@ object Reflect {
     }
 
 }
-
-/* The facade that allows to simply load the functions from our macro
-   annotations. */
-class ParadiseNgFunctionRetriever(loader: ClassLoader) {
-    import scala.meta._
-
-    /* Get the function that transforms scalameta trees. */
-    def apply(className: String, args: Seq[Any]): Stat => Stat = {
-        import scala.language.reflectiveCalls
-        val inst = Reflect.instantiate[{ def apply(annottee: Stat): Stat }](
-            loader, className, args
-        )
-        inst.apply(_)
-    }
-}
