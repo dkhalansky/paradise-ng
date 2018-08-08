@@ -52,15 +52,17 @@ class ParadiseNgTransformer(var tree: Tree) {
         val fn = {
             import Modifiers._
             val badIndices = ans map { m => m._2 }
-            val removeAnnots = (m: Defn) =>m.transformMods { mods =>
+            val removeAnnots = (mods: List[Mod]) =>
                 mods.zipWithIndex
                     .filter { m => !badIndices.contains(m._2) }
                     .map { m => m._1 }
-            }
             val initial = (s: Stat) => (s match {
-                case m: Defn => removeAnnots(m)
+                case m: Defn => m transformMods removeAnnots
+                case m: Decl => m transformMods removeAnnots
                 case Term.Block(Seq(t1: Defn, t2)) =>
-                    Term.Block(List(removeAnnots(t1), t2))
+                    Term.Block(List(t1 transformMods removeAnnots, t2))
+                case Term.Block(Seq(t1: Decl, t2)) =>
+                    Term.Block(List(t1 transformMods removeAnnots, t2))
             }): Stat
             (initial /: ans) { (f, a) => (a._1(_)) compose f }
         }
