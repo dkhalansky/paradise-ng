@@ -62,6 +62,7 @@ trait ReplIntegration { self: ParadiseNgComponent =>
             it's not. Though it's probably a bad practice to use the name
             `$iw` when inside the REPL. It's probably easy to make it go haywire
             by doing that even without our plugin. */
+        import scala.language.reflectiveCalls
         var innerMostIw = null.asInstanceOf[{def impl: Template}]
         val traverser = new Traverser {
             def goodName(name: AnyRef) = {
