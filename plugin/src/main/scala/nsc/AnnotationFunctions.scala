@@ -45,9 +45,12 @@ trait AnnotationFunctions { self: ParadiseNgComponent =>
 
         val withSources = attachSourcesToSymbols(annotation.original)
         val args = annotation.args.map(xs => {
-            getParameter(xs) match {
-                case Some(v) => v
-                case None => UnresolvedMacroParameterError(xs.pos)
+            unhideTypeParam(xs) match {
+                case Some(t) => t
+                case None => getParameter(xs) match {
+                    case Some(v) => v
+                    case None => UnresolvedMacroParameterError(xs.pos)
+                }
             }
         })
         val cls_name = getClassNameBySymbol(annotation.tpe.typeSymbol)

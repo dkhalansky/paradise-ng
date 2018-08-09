@@ -23,6 +23,7 @@ with SymbolSources
 with Annotations
 with AnnotationFunctions
 with ReplIntegration
+with TypeParamsDesugar
 {
     import global._
 
@@ -32,8 +33,9 @@ with ReplIntegration
     def newPhase(prev: Phase) = {
         object phase extends StdPhase(prev) {
             def apply(unit: CompilationUnit): Unit = {
+                val afterHiding = HideTypeParameters(unit.body)
                 try {
-                    val ants = withTyped(unit) { typed =>
+                    val ants = withTyped(unit, afterHiding) { typed =>
                         attachSourcesToSymbols(typed)
                         annottees(typed).map { case (md, ans) =>
                             val companion = getCompanionTree(md.symbol)
@@ -69,10 +71,10 @@ with ReplIntegration
     }
 
     /* Assign types to the tree as comprehensively as possible. */
-    def withTyped[T](unit: CompilationUnit)(fn: Tree => T): T = {
+    def withTyped[T](unit: CompilationUnit, body: Tree)(fn: Tree => T): T = {
         val packageIdent = TermName("'paradise-ng")
         val tree = PackageDef(Ident(packageIdent),
-            List(unit.body.duplicate))
+            List(body.duplicate))
         val context = analyzer.rootContext(unit).
             make(tree, scope = newScope)
         val namer = analyzer.newNamer(context)
