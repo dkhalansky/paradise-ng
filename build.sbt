@@ -41,11 +41,11 @@ def exposePaths(pluginJar: File, classpath: Seq[File]) {
 // TESTS ///////////////////////////////////////////////////////////////////////
 
 lazy val testSettings = Def.settings(
-        commonSettings,
-        publishArtifact := false,
-        libraryDependencies += "org.scalatest" %% "scalatest" % "3.0.1",
-        scalacOptions in Test ++= pluginOptions(jar.value)
-    )
+    commonSettings,
+    publishArtifact := false,
+    libraryDependencies += "org.scalatest" %% "scalatest" % "3.0.1",
+    scalacOptions in Test ++= pluginOptions(jar.value)
+)
 
 // TESTS OF COMPILE-TIME EXPANSIONS ///
 

@@ -1,5 +1,6 @@
 package localhost.plugin
 
+/* This trait is devoted to finding companion objects. */
 trait Companions { self: ParadiseNgComponent =>
     import global._
 
@@ -13,12 +14,20 @@ trait Companions { self: ParadiseNgComponent =>
         }
 
         /* If the compiler didn't find the companion object, it can mean one
-           of two things: either there really is no companion object or
-           the compiler is mistaken.
+           of three things: there really is no companion object, or the compiler
+           is mistaken, or we have a different notion of companion objects than
+           the compiler.
 
-           According to the definition of and comments for
-           `def companionSymbolOf` from `Namers.scala` in scalac sources, the
-           compiler can be trusted iff the member alongside its companion
+           The third case is covered by `!symbol.isType`. The only special rule
+           we have is that types, too, can have a companion. It doesn't make
+           any sense from the compiler's point of view because a type alias
+           doesn't have any hidden fields for the companion object to have
+           special access to. In our case, however, it could be useful to treat
+           the object eponymous to a type alias as a companion.
+
+           As for the trust issue, ccording to the definition of and comments
+           for `def companionSymbolOf` from `Namers.scala` in scalac sources,
+           the compiler can be trusted iff the member alongside its companion
            object is *not* defined in a code block. Class and package
            definitions are not considered code blocks, they are called
            "templates". So, for

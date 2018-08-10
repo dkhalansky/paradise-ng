@@ -1,5 +1,7 @@
 package localhost.plugin
 
+/*  This trait is devoted to finding the annotations that have the corresponding
+    macro functions. */
 trait Annotations extends Companions { self: ParadiseNgComponent =>
 
     import global._
@@ -41,6 +43,15 @@ trait Annotations extends Companions { self: ParadiseNgComponent =>
         buffer.to[List]
     }
 
+    /*  Given a typed tree, return a list of member definitions that are
+        annotated with macro annotations and the list of such annotations
+        with their indices.
+
+        This method returns the member definitions in the order in which
+        they should be subjected to expansion. That is, the innermost trees
+        are expanded first, and of the trees with an equal depth, module
+        definitions are expanded first since companion object should be
+        processed before the accompanied definition. */
     def annottees(tree: Tree): List[(MemberDef, AnInfos)] = {
         ourAnnottees(tree)
             /* Increase the depth if we're dealing with a companion object.

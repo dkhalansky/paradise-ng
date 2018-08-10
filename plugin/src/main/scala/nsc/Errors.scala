@@ -1,5 +1,6 @@
 package localhost.plugin
 
+/*  This trait provides error handling facilities. */
 trait Errors { self: ParadiseNgComponent =>
     import global._
 
