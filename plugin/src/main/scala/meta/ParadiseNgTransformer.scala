@@ -56,15 +56,18 @@ class ParadiseNgTransformer(var tree: Tree) {
                 mods.zipWithIndex
                     .filter { m => !badIndices.contains(m._2) }
                     .map { m => m._1 }
-            val initial = (s: Stat) => (s match {
-                case m: Defn => m transformMods removeAnnots
-                case m: Decl => m transformMods removeAnnots
-                case Term.Block(Seq(t1: Defn, t2)) =>
-                    Term.Block(List(t1 transformMods removeAnnots, t2))
-                case Term.Block(Seq(t1: Decl, t2)) =>
-                    Term.Block(List(t1 transformMods removeAnnots, t2))
-            }): Stat
-            (initial /: ans) { (f, a) => (a._1(_)) compose f }
+            val initial = (s: Stat, c: Option[Stat]) => { s match {
+                case m: Defn => (List((m transformMods removeAnnots, c)), Nil)
+                case m: Decl => (List((m transformMods removeAnnots, c)), Nil)
+            }}: (List[(Stat, Option[Stat])], List[Stat])
+            (initial /: ans) { (f, a) => (tree, comp) => f(tree, comp) match {
+                case (ltv, lst) => {
+                    val inr = Nil.asInstanceOf[List[(Stat, Option[Stat])]]
+                    ltv.map(t => a._1.pluginInterop(t._1, t._2))
+                       .foldRight((inr, lst))((tp, ac) =>
+                           (tp._1 ++ ac._1, tp._2 ++ ac._2))
+                }
+            }}
         }
         val nonShadowParent = {
             val nonShadowTree = this.tree.findPos[Stat](
@@ -74,31 +77,15 @@ class ParadiseNgTransformer(var tree: Tree) {
         }
         val tree = getAt(position)
         val companion = companionPos.map(getAt)
-        val arg = companion.map(c => Term.Block(List(tree, c))).getOrElse(tree)
-        val expanded = fn((arg.transform {
-            case s => s.getPayload[Tree]().getOrElse(s)
-        }).asInstanceOf[Stat])
-        val removeCompanion = () => {
-            companion map (c => replaceChild(nonShadowParent, c, List()))
-        }
-        expanded match {
-            case Term.Block(lst @ List(t, c)) => {
-                companion match {
-                    case None => replaceChild(nonShadowParent, tree, lst)
-                    case Some(p) => {
-                        tree storePayload t
-                        p storePayload c
-                    }
-                }
-            }
-            case Term.Block(lst) => {
-                replaceChild(nonShadowParent, tree, lst)
-                removeCompanion()
-            }
-            case t => {
-                tree storePayload t
-                removeCompanion()
-            }
+        val expanded = fn(eval(tree).asInstanceOf[Stat],
+            companion.map(c => eval(c).asInstanceOf[Stat]))
+        val newTrees = (expanded._1.map(_._1)
+            ++ expanded._1.flatMap(_._2)
+            ++ expanded._2)
+        companion map { c => c storePayload (q"{}") }
+        newTrees match {
+            case List(t) => tree storePayload t
+            case lst => replaceChild(nonShadowParent, tree, lst)
         }
     }
 
