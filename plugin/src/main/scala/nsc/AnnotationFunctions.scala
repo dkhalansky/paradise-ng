@@ -33,6 +33,7 @@ trait AnnotationFunctions { self: ParadiseNgComponent =>
         @tree -- the tree to be resolved.
 
         @maxDepth -- the maximal length of a chain. */
+    @annotation.tailrec
     private def getParameter(tree: Tree, maxDepth: Int = 15): Option[Any] = {
         if (maxDepth <= 0) {
             None
@@ -40,8 +41,15 @@ trait AnnotationFunctions { self: ParadiseNgComponent =>
             case Literal(Constant(v)) => Some(v)
             case s if s.symbol != null && s.symbol != NoSymbol =>
                 s.symbol.source match {
-                    case Some(ValDef(_, _, _, v)) =>
-                        getParameter(v, maxDepth - 1)
+                    case Some(ValDef(m, _, _, v)) => {
+                        if (m hasFlag Flag.MUTABLE) {
+                            None
+                        } else if (!m.annotations.isEmpty) {
+                            None
+                        } else {
+                            getParameter(v, maxDepth - 1)
+                        }
+                    }
                     case _ => None
                 }
             case _ => None
