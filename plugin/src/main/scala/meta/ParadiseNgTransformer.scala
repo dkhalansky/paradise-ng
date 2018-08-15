@@ -46,29 +46,8 @@ class ParadiseNgTransformer(var tree: Tree) {
         case s => s.getPayload[Tree]().getOrElse(s)
     }
 
-    def modify(position: Int, companionPos: Option[Int],
-        ans: List[(ParadiseNgAnnotation, Int)])
+    def modify(position: Int, companionPos: Option[Int], fn: TreeTransformation)
     {
-        val fn = {
-            import Modifiers._
-            val badIndices = ans map { m => m._2 }
-            val removeAnnots = (mods: List[Mod]) =>
-                mods.zipWithIndex
-                    .filter { m => !badIndices.contains(m._2) }
-                    .map { m => m._1 }
-            val initial = (s: Stat, c: Option[Stat]) => { s match {
-                case m: Defn => (List((m transformMods removeAnnots, c)), Nil)
-                case m: Decl => (List((m transformMods removeAnnots, c)), Nil)
-            }}: (List[(Stat, Option[Stat])], List[Stat])
-            (initial /: ans) { (f, a) => (tree, comp) => f(tree, comp) match {
-                case (ltv, lst) => {
-                    val inr = Nil.asInstanceOf[List[(Stat, Option[Stat])]]
-                    ltv.map(t => a._1.pluginInterop(t._1, t._2))
-                       .foldRight((inr, lst))((tp, ac) =>
-                           (tp._1 ++ ac._1, tp._2 ++ ac._2))
-                }
-            }}
-        }
         val nonShadowParent = {
             val nonShadowTree = this.tree.findPos[Stat](
                 Position.Range(null, position, position+1),
@@ -77,7 +56,7 @@ class ParadiseNgTransformer(var tree: Tree) {
         }
         val tree = getAt(position)
         val companion = companionPos.map(getAt)
-        val expanded = fn(eval(tree).asInstanceOf[Stat],
+        val expanded = fn.pluginInterop(eval(tree).asInstanceOf[Stat],
             companion.map(c => eval(c).asInstanceOf[Stat]))
         val newTrees = (expanded._1.map(_._1)
             ++ expanded._1.flatMap(_._2)

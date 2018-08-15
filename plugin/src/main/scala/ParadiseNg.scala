@@ -55,7 +55,8 @@ with TypeParamsDesugar
                     }
 
                     for ((md, comp, ans) <- ants) {
-                        tr.modify(md, comp, ans)
+                        tr.modify(md, comp, new
+                            localhost.lib.ParadiseNgAnnotationCombination(ans))
                     }
 
                     unit.body = newUnitParser(tr.get().toString()).parse()

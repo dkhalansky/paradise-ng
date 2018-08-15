@@ -3,8 +3,13 @@ package localhost.lib
 import scala.annotation.StaticAnnotation
 import scala.meta._
 
-trait ParadiseNgAnnotation extends StaticAnnotation {
-    def pluginInterop(tree: Stat, companion: Option[Stat]) = {
+trait TreeTransformation {
+    def pluginInterop(tree: Stat, companion: Option[Stat]):
+        (List[(Stat, Option[Stat])], List[Stat])
+}
+
+trait ParadiseNgAnnotation extends StaticAnnotation with TreeTransformation {
+    override def pluginInterop(tree: Stat, companion: Option[Stat]) = {
         val arg = companion match {
             case None => tree
             case Some(comp) => q"$tree; $comp"
@@ -24,4 +29,52 @@ trait ParadiseNgAnnotation extends StaticAnnotation {
     }: (List[(Stat, Option[Stat])], List[Stat])
 
     def apply(annottee: Stat): Stat
+}
+
+object Modifiers {
+    implicit class XtensionDefModifiers[T <: Defn](val tree: T) extends AnyVal {
+        def transformMods(fn: List[Mod] => List[Mod]): T = tree match {
+            case t: Defn.Class  => t.copy(mods = fn(t.mods)).asInstanceOf[T]
+            case t: Defn.Trait  => t.copy(mods = fn(t.mods)).asInstanceOf[T]
+            case t: Defn.Type   => t.copy(mods = fn(t.mods)).asInstanceOf[T]
+            case t: Defn.Object => t.copy(mods = fn(t.mods)).asInstanceOf[T]
+            case t: Defn.Def    => t.copy(mods = fn(t.mods)).asInstanceOf[T]
+            case t: Defn.Val    => t.copy(mods = fn(t.mods)).asInstanceOf[T]
+            case t: Defn.Var    => t.copy(mods = fn(t.mods)).asInstanceOf[T]
+        }
+    }
+
+    implicit class XtensionDeclModifiers[T <: Decl](val tree: T) extends AnyVal {
+        def transformMods(fn: List[Mod] => List[Mod]): T = tree match {
+            case t: Decl.Type   => t.copy(mods = fn(t.mods)).asInstanceOf[T]
+            case t: Decl.Def    => t.copy(mods = fn(t.mods)).asInstanceOf[T]
+            case t: Decl.Val    => t.copy(mods = fn(t.mods)).asInstanceOf[T]
+        }
+    }
+}
+
+class ParadiseNgAnnotationCombination(ans: List[(ParadiseNgAnnotation, Int)])
+extends TreeTransformation {
+    override def pluginInterop(tree: Stat, comp: Option[Stat]) = {
+        import Modifiers._
+        val badIndices = ans map { m => m._2 }
+        val removeAnnots = (mods: List[Mod]) =>
+            mods.zipWithIndex
+                .filter { m => !badIndices.contains(m._2) }
+                .map { m => m._1 }
+        val initial = (s: Stat, c: Option[Stat]) => { s match {
+            case m: Defn => (List((m transformMods removeAnnots, c)), Nil)
+            case m: Decl => (List((m transformMods removeAnnots, c)), Nil)
+        }}: (List[(Stat, Option[Stat])], List[Stat])
+        val fn = (initial /: ans) { (f, a) => (tree, comp) =>
+        f(tree, comp) match {
+            case (ltv, lst) => {
+                val inr = Nil.asInstanceOf[List[(Stat, Option[Stat])]]
+                ltv.map(t => a._1.pluginInterop(t._1, t._2))
+                   .foldRight((inr, lst))((tp, ac) =>
+                       (tp._1 ++ ac._1, tp._2 ++ ac._2))
+            }
+        }}
+        fn(tree, comp)
+    }
 }
