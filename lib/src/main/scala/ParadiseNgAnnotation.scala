@@ -31,7 +31,7 @@ trait ParadiseNgAnnotation extends StaticAnnotation with TreeTransformation {
     def apply(annottee: Stat): Stat
 }
 
-class ParadiseNgAnnotationCombination(ans: List[(ParadiseNgAnnotation, Int)])
+class AnnotationCombination(ans: List[(TreeTransformation, Int)])
 extends TreeTransformation {
     override def pluginInterop(tree: Stat, comp: Option[Stat]) = {
         import localhost.lib.internal.meta.Modifiers._
