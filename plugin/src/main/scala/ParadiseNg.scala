@@ -55,8 +55,11 @@ with TypeParamsDesugar
                     }
 
                     for ((md, comp, ans, depth) <- ants) {
-                        tr.modify(md.start-1, comp.map(_.start-1), new
-                            localhost.lib.AnnotationCombination(ans))
+                        val fn = new localhost.lib.AnnotationCombination(ans)
+                        comp match {
+                            case None => tr.modify(fn, md.start-1)
+                            case Some(c) => tr.modify(fn, md.start-1, c.start-1)
+                        }
                     }
 
                     unit.body = newUnitParser(tr.get().toString()).parse()

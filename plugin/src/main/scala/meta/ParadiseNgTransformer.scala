@@ -28,35 +28,31 @@ class ParadiseNgTransformer(var tree: Tree) {
             _.getPosition()).get
     }
 
-    def modify(position: Int, companionPos: Option[Int], fn: TreeTransformation)
-    {
+    def modify(fn: TreeTransformation, position: Int): List[Stat] = {
         val tree = getAt(position)
-        companionPos match {
-            case None => {
-                val result = fn.pluginInterop(
-                    eval(tree).asInstanceOf[Stat], None)
-                val newTrees = (result._1.map(_._1) ++ result._1.flatMap(_._2),
-                    result._2)
-                tree storePayload newTrees
-            }
-            case Some(cpos) => {
-                val compStat = getAt(cpos, tree.parent.get)
-                val compPayload = compStat
-                    .getPayload[Payload]
-                    .getOrElse((List(compStat), Nil))
-                val companion = compPayload match {
-                    case (List(c), _) => c
-                }
-                val result = fn.pluginInterop(
-                    eval(tree).asInstanceOf[Stat], Some(companion))
-                val newTrees = (result._1.map(_._1),
-                    result._2)
-                val companions = (result._1.flatMap(_._2), compPayload._2)
-                tree storePayload newTrees
-                compStat storePayload companions
-            }
-        }
+        val result = fn.pluginInterop(eval(tree).asInstanceOf[Stat], None)
+        val newTrees = (result._1.map(_._1) ++ result._1.flatMap(_._2),
+            result._2)
+        tree storePayload newTrees
+        newTrees._1 ++ newTrees._2
     }
+
+    def modify(fn: TreeTransformation, position: Int, companionPos: Int) = {
+        val tree = getAt(position)
+        val compStat = getAt(companionPos, tree.parent.get)
+        val compPayload = compStat.getPayload[Payload]
+            .getOrElse((List(compStat), Nil))
+        val companion = compPayload match {
+            case (List(c), _) => c
+        }
+        val result = fn.pluginInterop(
+            eval(tree).asInstanceOf[Stat], Some(companion))
+        val newTrees = (result._1.map(_._1), result._2)
+        val companions = (result._1.flatMap(_._2), compPayload._2)
+        tree storePayload newTrees
+        compStat storePayload companions
+        (newTrees._1 ++ newTrees._2, companions._1 ++ companions._2)
+    }: (List[Stat], List[Stat])
 
     def get(): Tree = eval(tree)
 }
