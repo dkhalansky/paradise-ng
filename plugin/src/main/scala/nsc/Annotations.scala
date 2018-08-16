@@ -17,7 +17,7 @@ trait Annotations extends Companions { self: ParadiseNgComponent =>
 
     /* Find the subtrees that are annotated using ParadiseNg's annotations,
        alongside with the relevant annotation definitions, their indices, and
-       the depth on which the tree was encountered. */
+       the number of annotated parents. */
     private def ourAnnottees(tree: Tree) = {
         import scala.collection.mutable.ArrayBuffer
         var buffer = new ArrayBuffer[(MemberDef, AnInfos, Int)]
@@ -30,13 +30,15 @@ trait Annotations extends Companions { self: ParadiseNgComponent =>
                             zipWithIndex.filter(a => isOurTypedAnnotation(a._1))
                         if (!true_annots.isEmpty) {
                             buffer += ((md, true_annots, depth))
+                            depth += 1
+                            super.traverse(tree)
+                            depth -= 1
+                        } else {
+                            super.traverse(tree)
                         }
                     }
-                    case _ =>
+                    case _ => super.traverse(tree)
                 }
-                depth += 1
-                super.traverse(tree)
-                depth -= 1
             }
         }
         annoteesTraverser.traverse(tree)
@@ -44,40 +46,28 @@ trait Annotations extends Companions { self: ParadiseNgComponent =>
     }
 
     /*  Given a typed tree, return a list of member definitions that are
-        annotated with macro annotations and the list of such annotations
-        with their indices.
+        annotated with macro annotations, the list of such annotations with
+        their indices, and the number of annotated parents of a definition.
 
         This method returns the member definitions in the order in which
         they should be subjected to expansion. That is, the innermost trees
         are expanded first, and of the trees with an equal depth, module
         definitions are expanded first since companion object should be
         processed before the accompanied definition. */
-    def annottees(tree: Tree): List[(MemberDef, AnInfos)] = {
+    def annottees(tree: Tree): List[(MemberDef, AnInfos, Int)] = {
         ourAnnottees(tree)
             /* Increase the depth if we're dealing with a companion object.
                This is done so that a companion object is always processed
-               before the accompanied definition is.
-
-                   @D
-                   class A // depth = 1; recDepth = 1
-
-                   @C
-                   object A // depth = 1; recDepth = 2
-                   { // depth = 2: blocks are separate trees
-                       @B
-                       class E // depth = 3; recDepth = 3
-                   }
-            */
+               before the accompanied definition is. */
             .map({
-                case (md: ModuleDef, ans, depth) => (md, ans, depth+1)
-                case (md,            ans, depth) => (md, ans, depth)
+                case (md: ModuleDef, ans, depth) => (md, ans, 2*depth+1)
+                case (md,            ans, depth) => (md, ans, 2*depth)
             })
             /* sort in order of decreasing depth so we process children before
                their parents. */
             .sortWith { _._3 > _._3 }
-            /* We no longer need to know the depth, everything is ordered
-               already. */
-            .map({ case (md, ans, _) => (md, ans) })
+            /* Restore the original depth. */
+            .map({ case (md, ans, depth) => (md, ans, depth/2) })
     }
 
 }

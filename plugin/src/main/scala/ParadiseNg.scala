@@ -37,13 +37,13 @@ with TypeParamsDesugar
                 try {
                     val ants = withTyped(unit, afterHiding) { typed =>
                         attachSourcesToSymbols(typed)
-                        annottees(typed).map { case (md, ans) =>
+                        annottees(typed).map { case (md, ans, depth) =>
                             val companion = getCompanionTree(md.symbol)
-                                .map(t => t.pos.start-1)
+                                .map(t => t.pos)
                             val nans = ans map { case (an, ix) =>
                                 (getAnnotationFunction(an), ix)
                             }
-                            (md.pos.start-1, companion, nans)
+                            (md.pos, companion, nans, depth)
                         }
                     }
                     if (ants.isEmpty)
@@ -54,8 +54,8 @@ with TypeParamsDesugar
                         new meta.ParadiseNgTransformer(metatree)
                     }
 
-                    for ((md, comp, ans) <- ants) {
-                        tr.modify(md, comp, new
+                    for ((md, comp, ans, depth) <- ants) {
+                        tr.modify(md.start-1, comp.map(_.start-1), new
                             localhost.lib.AnnotationCombination(ans))
                     }
 
