@@ -53,6 +53,4 @@ class ParadiseNgTransformer(var tree: Tree) {
         compStat storePayload companions
         (newTrees._1 ++ newTrees._2, companions._1 ++ companions._2)
     }: (List[Stat], List[Stat])
-
-    def get(): Tree = eval(tree)
 }

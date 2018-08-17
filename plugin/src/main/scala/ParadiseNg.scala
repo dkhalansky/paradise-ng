@@ -61,15 +61,30 @@ with TypeParamsDesugar
                         new meta.ParadiseNgTransformer(metatree)
                     }
 
+                    var body = unit.body
                     for ((md, comp, ans, depth) <- ants) {
                         val fn = new localhost.lib.AnnotationCombination(ans)
+                        val getStats = (v: List[AnyRef]) => v.map { s =>
+                            newUnitParser(s.toString()).parseStats()(0) }
                         comp match {
-                            case None => tr.modify(fn, md.start-1)
-                            case Some(c) => tr.modify(fn, md.start-1, c.start-1)
+                            case None => {
+                                val nt = tr.modify(fn, md.start-1)
+                                if (depth == 0) {
+                                    body = replaceTree(body, md, getStats(nt))
+                                }
+                            }
+                            case Some(c) => {
+                                val (nt, cnt) = tr.modify(
+                                    fn, md.start-1, c.start-1)
+                                if (depth == 0) {
+                                    body = replaceTree(body, md, getStats(nt))
+                                    body = replaceTree(body, c, getStats(cnt))
+                                }
+                            }
                         }
                     }
 
-                    unit.body = newUnitParser(tr.get().toString()).parse()
+                    unit.body = body
                     updateReplHandlers(unit.body)
                 } catch {
                     // Use this exception for emergency exits
@@ -79,6 +94,29 @@ with TypeParamsDesugar
             }
         }
         phase
+    }
+
+    def replaceTree(body: Tree, pos: Position, newTrees: List[Tree]): Tree = {
+        newTrees map { t => t.setPos(pos) }
+        def newStats(ss: List[Tree]): List[Tree] = ss.flatMap { s =>
+            if (s.pos == pos) { newTrees } else { List(s) }
+        }
+        object transformer extends Transformer {
+            var found = false
+            override def transform(tree: Tree): Tree = {
+                if (!found && tree.children.exists(_.pos == pos)) {
+                    found = true
+                    tree match {
+                        case o@PackageDef(_, s)  => o.copy(stats = newStats(s))
+                        case o@Block(s, _)       => o.copy(stats = newStats(s))
+                        case o@Template(_, _, s) => o.copy(body  = newStats(s))
+                    }
+                } else {
+                    super.transform(tree)
+                }
+            }
+        }
+        transformer.transform(body)
     }
 
     /* Assign types to the tree as comprehensively as possible. */
