@@ -7,6 +7,14 @@ trait AnnotationFunctions { self: ParadiseNgComponent =>
 
     import global._
 
+    abstract class TreeEvaluationError() { }
+    object TreeEvaluationError {
+        case class VarValueDependency(varTree: Tree) extends TreeEvaluationError
+        case class AnnotatedDependency(tree: Tree) extends TreeEvaluationError
+        case class NoSourceError(tree: Tree) extends TreeEvaluationError
+        case class UnsupportedTree(tree: Tree) extends TreeEvaluationError
+    }
+
     /*  Given a symbol, determine the string to feed to the classloader to
         acquire the corresponding class.
 
@@ -34,26 +42,23 @@ trait AnnotationFunctions { self: ParadiseNgComponent =>
 
         @maxDepth -- the maximal length of a chain. */
     @annotation.tailrec
-    private def getParameter(tree: Tree, maxDepth: Int = 15): Option[Any] = {
-        if (maxDepth <= 0) {
-            None
-        } else tree match {
-            case Literal(Constant(v)) => Some(v)
-            case s if s.symbol != null && s.symbol != NoSymbol =>
-                s.symbol.source match {
-                    case Some(ValDef(m, _, _, v)) => {
-                        if (m hasFlag Flag.MUTABLE) {
-                            None
-                        } else if (!m.annotations.isEmpty) {
-                            None
-                        } else {
-                            getParameter(v, maxDepth - 1)
-                        }
+    private def getParameter(tree: Tree):
+    Either[TreeEvaluationError, Any] = tree match {
+        case Literal(Constant(v)) => Right(v)
+        case s if s.symbol != null && s.symbol != NoSymbol =>
+            s.symbol.source match {
+                case Some(t@ValDef(m, _, _, v)) => {
+                    if (m hasFlag Flag.MUTABLE) {
+                        Left(TreeEvaluationError.VarValueDependency(t))
+                    } else if (!m.annotations.isEmpty) {
+                        Left(TreeEvaluationError.AnnotatedDependency(t))
+                    } else {
+                        getParameter(v)
                     }
-                    case _ => None
                 }
-            case _ => None
-        }
+                case _ => Left(TreeEvaluationError.NoSourceError(tree))
+            }
+        case _ => Left(TreeEvaluationError.UnsupportedTree(tree))
     }
 
     /*  From annotation defition acquire an instance of the annotation class. */
@@ -103,8 +108,8 @@ trait AnnotationFunctions { self: ParadiseNgComponent =>
             unhideTypeParam(xs) match {
                 case Some(t) => t
                 case None => getParameter(xs) match {
-                    case Some(v) => v
-                    case None => UnresolvedMacroParameterError(xs.pos)
+                    case Right(v) => v
+                    case Left(e) => ParameterResolutionError(xs.pos, e)
                 }
             }
         })

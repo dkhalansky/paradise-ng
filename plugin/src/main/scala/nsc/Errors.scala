@@ -6,10 +6,21 @@ trait Errors { self: ParadiseNgComponent =>
 
     case class ParadiseNgException(pos: Position, msg: String) extends Exception
 
-    def UnresolvedMacroParameterError[T](pos: Position): T = {
-        throw ParadiseNgException(pos,
-            "couldn't resolve a macro annotation argument; " +
-            "only constant values are supported")
+    def ParameterResolutionError[T](pos: Position, e: TreeEvaluationError): T ={
+        e match {
+            case TreeEvaluationError.UnsupportedTree(t) =>
+                throw ParadiseNgException(t.pos,
+                    "only constant values and val-definitions are supported in macro annotation parameters")
+            case TreeEvaluationError.NoSourceError(t) =>
+                throw ParadiseNgException(t.pos,
+                    "couldn't find the source for macro annotation parameter")
+            case TreeEvaluationError.AnnotatedDependency(t) =>
+                throw ParadiseNgException(t.pos,
+                    "annotated val-definitions can't be used in macro annotation invocations")
+            case TreeEvaluationError.VarValueDependency(t) =>
+                throw ParadiseNgException(t.pos,
+                    "mutable definitions can't be referenced in macro annotation invocations")
+        }
     }
 
     def NoConstructorError[T](an: AnnotationInfo, args: Seq[Any]): T = {

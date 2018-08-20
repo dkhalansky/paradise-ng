@@ -35,7 +35,6 @@ with TypeParamsDesugar
             def apply(unit: CompilationUnit): Unit = {
                 val afterHiding = HideTypeParameters(unit.body)
                 try {
-                    var encounteredErrors = false
                     val ants = withTyped(unit, afterHiding) { typed =>
                         attachSourcesToSymbols(typed)
                         annottees(typed).map { case (md, ans, depth) =>
@@ -44,7 +43,6 @@ with TypeParamsDesugar
                             val nans = ans map { case (an, ix) =>
                                 (try getAnnotationFunction(an) catch {
                                     case ParadiseNgException(pos, msg) => {
-                                        encounteredErrors = true
                                         reporter.error(pos, msg)
                                         null
                                     }
@@ -53,7 +51,7 @@ with TypeParamsDesugar
                             (md.pos, companion, nans, depth)
                         }
                     }
-                    if (encounteredErrors || ants.isEmpty)
+                    if (reporter.hasErrors || ants.isEmpty)
                         return
 
                     val tr = {
