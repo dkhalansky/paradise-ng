@@ -33,26 +33,47 @@ trait ParadiseNgAnnotation extends StaticAnnotation with TreeTransformation {
 
 class AnnotationCombination(ans: List[(TreeTransformation, Int)])
 extends TreeTransformation {
-    override def pluginInterop(tree: Stat, comp: Option[Stat]) = {
-        import localhost.lib.internal.meta.Modifiers._
-        val badIndices = ans map { m => m._2 }
-        val removeAnnots = (mods: List[Mod]) =>
-            mods.zipWithIndex
-                .filter { m => !badIndices.contains(m._2) }
-                .map { m => m._1 }
-        val initial = (s: Stat, c: Option[Stat]) => { s match {
-            case m: Defn => (List((m transformMods removeAnnots, c)), Nil)
-            case m: Decl => (List((m transformMods removeAnnots, c)), Nil)
-        }}: (List[(Stat, Option[Stat])], List[Stat])
-        val fn = (initial /: ans) { (f, a) => (tree, comp) =>
-        f(tree, comp) match {
-            case (ltv, lst) => {
-                val inr = Nil.asInstanceOf[List[(Stat, Option[Stat])]]
-                ltv.map(t => a._1.pluginInterop(t._1, t._2))
-                   .foldRight((inr, lst))((tp, ac) =>
-                       (tp._1 ++ ac._1, tp._2 ++ ac._2))
+    import localhost.lib.internal.meta.Modifiers._
+
+    private def splitAtMultiple[T](vals: List[T], ixs: List[Int]) = {
+        val r = ((vals, List.empty[List[T]], -1) /: ixs) { (ac, ix) =>
+            (ac._1.drop(ix-ac._3), ac._1.take(ix-ac._3-1) :: ac._2, ix)
+        }
+        (r._1 :: r._2).reverse
+    } : List[List[T]]
+
+    override def pluginInterop(tree: Stat, companion: Option[Stat]) = {
+        val (annotsWithMods, initialTree) = tree match {
+            case t: Defn => {
+                val mods = splitAtMultiple(t.mods, ans map (_._2))
+                (ans map (_._1) zip mods, t withMods mods.last)
+            }
+            case t: Decl => {
+                val mods = splitAtMultiple(t.mods, ans map (_._2))
+                (ans map (_._1) zip mods, t withMods mods.last)
+            }
+        }
+
+        val ac = (List((initialTree, companion)), List.empty[Stat])
+        (annotsWithMods :\ ac) { (anWithMods, trees) => {
+            (trees, anWithMods) match {
+                case ((toExpand, notToExpand), (an, mods)) => {
+                    val ac1 = List.empty[(Stat, Option[Stat])]
+                    toExpand
+                        .map(t => an.pluginInterop(t._1, t._2))
+                        .foldRight((ac1, notToExpand)) { (next, ac) =>
+                            val next1WithMods = if (mods.isEmpty) {
+                                next._1
+                            } else next._1 map { v => v._1 match {
+                                case t: Defn =>
+                                    (t.transformMods(x => mods ++ x), v._2)
+                                case t: Decl =>
+                                    (t.transformMods(x => mods ++ x), v._2)
+                            }}
+                            (next1WithMods ++ ac._1, next._2 ++ ac._2)
+                        }
+                }
             }
         }}
-        fn(tree, comp)
-    }
+    }: (List[(Stat, Option[Stat])], List[Stat])
 }

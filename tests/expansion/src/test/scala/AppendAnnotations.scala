@@ -19,6 +19,7 @@ class AppendAnnotations extends FunSuite {
         assert(letters === "ba")
     }
 
+    // A change from how Paradise behaves!
     test("Verify expansion order") {
         var letters = ""
 
@@ -32,7 +33,7 @@ class AppendAnnotations extends FunSuite {
 
         foo()
 
-        assert(letters === "abc")
+        assert(letters === "acb")
     }
 
 }
