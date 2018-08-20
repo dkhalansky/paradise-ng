@@ -14,7 +14,7 @@ without any types.
   1. First, we try to add types to a copy of the initial tree where possible by
      running a typechecker on it.
   2. Next, we find the trees annotated with trees with types that are children
-     of `ParadiseNgAnnotation`.
+     of `TreeTransformation`.
   3. For each tree that represents a class definition, trait definition, or type
      definition, we try to find a companion object.
   4. Now we have a list of the trees that we will need to expand annotations on.

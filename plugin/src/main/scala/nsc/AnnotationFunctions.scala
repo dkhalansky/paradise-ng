@@ -1,7 +1,7 @@
 package localhost.plugin
 import localhost.lib._
 
-/*  This trait is devoted to acquiring an instance of `ParadiseNgAnnotation`
+/*  This trait is devoted to acquiring an instance of `TreeTransformation`
     represented by an annotation. */
 trait AnnotationFunctions { self: ParadiseNgComponent =>
 
@@ -110,7 +110,7 @@ trait AnnotationFunctions { self: ParadiseNgComponent =>
         })
 
         val cls_name = getClassNameBySymbol(annotation.tpe.typeSymbol)
-        try Reflect.instantiate[ParadiseNgAnnotation](loader, cls_name, args)
+        try Reflect.instantiate[TreeTransformation](loader, cls_name, args)
         catch {
             case e: java.lang.NoSuchMethodException =>
                 NoConstructorError(annotation, args)

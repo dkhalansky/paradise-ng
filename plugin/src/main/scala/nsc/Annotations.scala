@@ -12,7 +12,7 @@ trait Annotations extends Companions { self: ParadiseNgComponent =>
        ParadiseNg. */
     private def isOurTypedAnnotation(an: AnnotationInfo) : Boolean = {
         import localhost.lib._
-        an.symbol isNonBottomSubClass symbolOf[ParadiseNgAnnotation]
+        an.symbol isNonBottomSubClass symbolOf[TreeTransformation]
     }
 
     /* Find the subtrees that are annotated using ParadiseNg's annotations,
