@@ -8,6 +8,7 @@ import nsc.plugins.Plugin
 import nsc.plugins.PluginComponent
 
 import scala.meta._
+import scala.util._
 
 class ParadiseNg(val global: Global) extends Plugin {
     import global._
@@ -66,16 +67,22 @@ with TypeParamsDesugar
                             newUnitParser(s.toString()).parseStats()(0) }
                         comp match {
                             case None => {
-                                val nt = tr.modify(fn, md.start-1).fold(
-                                    t => TreeTransformationError(md, t), x=>x)
+                                val nt = tr.modify(fn, md.start-1) match {
+                                    case Failure(t) =>
+                                        TreeTransformationError(md, t)
+                                    case Success(v) => v
+                                }
                                 if (depth == 0) {
                                     body = replaceTree(body, md, getStats(nt))
                                 }
                             }
                             case Some(c) => {
                                 val (nt, cnt) = tr.modify(fn, md.start-1,
-                                c.start-1).fold(
-                                    t => TreeTransformationError(md, t), x=>x)
+                                c.start-1) match {
+                                    case Failure(t) =>
+                                        TreeTransformationError(md, t)
+                                    case Success(v) => v
+                                }
                                 if (depth == 0) {
                                     body = replaceTree(body, md, getStats(nt))
                                     body = replaceTree(body, c, getStats(cnt))

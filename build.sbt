@@ -43,6 +43,7 @@ def exposePaths(pluginJar: File, classpath: Seq[File]) {
 lazy val testSettings = Def.settings(
     commonSettings,
     publishArtifact := false,
+    publish := { },
     libraryDependencies += "org.scalatest" %% "scalatest" % "3.0.1",
     scalacOptions in Test ++= pluginOptions(jar.value)
 )
@@ -71,6 +72,7 @@ lazy val replTests = (project in file("tests/repl")).
 // AGGREGATE TEST PROJECT /////////////
 
 lazy val tests = project.aggregate(expansionTests, replTests)
+    .settings(testSettings)
 
 // MAIN PROJECT ///////////////////////////////////////////////////////////////
 
