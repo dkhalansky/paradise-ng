@@ -23,6 +23,11 @@ trait Errors { self: ParadiseNgComponent =>
         }
     }
 
+    def TreeTransformationError[T](pos: Position, t: Throwable): T = {
+        throw ParadiseNgException(pos,
+            s"an error occurred during a macro annotation expansion: $t")
+    }
+
     def NoConstructorError[T](an: AnnotationInfo, args: Seq[Any]): T = {
         val name = an.tpe.typeSymbol.name
         val argsStr = args.map(x => x.getClass().toString())

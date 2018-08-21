@@ -66,14 +66,16 @@ with TypeParamsDesugar
                             newUnitParser(s.toString()).parseStats()(0) }
                         comp match {
                             case None => {
-                                val nt = tr.modify(fn, md.start-1)
+                                val nt = tr.modify(fn, md.start-1).fold(
+                                    t => TreeTransformationError(md, t), x=>x)
                                 if (depth == 0) {
                                     body = replaceTree(body, md, getStats(nt))
                                 }
                             }
                             case Some(c) => {
-                                val (nt, cnt) = tr.modify(
-                                    fn, md.start-1, c.start-1)
+                                val (nt, cnt) = tr.modify(fn, md.start-1,
+                                c.start-1).fold(
+                                    t => TreeTransformationError(md, t), x=>x)
                                 if (depth == 0) {
                                     body = replaceTree(body, md, getStats(nt))
                                     body = replaceTree(body, c, getStats(cnt))
