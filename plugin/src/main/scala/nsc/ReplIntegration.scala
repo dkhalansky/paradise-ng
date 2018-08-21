@@ -1,4 +1,4 @@
-package localhost.plugin
+package com.github.dkhalansky.paradiseng.plugin
 import scala.tools.nsc.interpreter._
 
 /*  There is a special need for handling REPL because it works

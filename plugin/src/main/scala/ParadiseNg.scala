@@ -1,4 +1,4 @@
-package localhost.plugin
+package com.github.dkhalansky.paradiseng.plugin
 
 import scala.tools.nsc
 import nsc.Global
@@ -62,7 +62,7 @@ with TypeParamsDesugar
 
                     var body = unit.body
                     for ((md, comp, ans, depth) <- ants) {
-                        val fn = new localhost.lib.AnnotationCombination(ans)
+                        val fn = new com.github.dkhalansky.paradiseng.lib.AnnotationCombination(ans)
                         val getStats = (v: List[AnyRef]) => v.map { s =>
                             newUnitParser(s.toString()).parseStats()(0) }
                         comp match {

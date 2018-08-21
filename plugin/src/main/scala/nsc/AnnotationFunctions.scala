@@ -1,5 +1,5 @@
-package localhost.plugin
-import localhost.lib._
+package com.github.dkhalansky.paradiseng.plugin
+import com.github.dkhalansky.paradiseng.lib._
 
 /*  This trait is devoted to acquiring an instance of `TreeTransformation`
     represented by an annotation. */

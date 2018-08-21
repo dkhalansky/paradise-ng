@@ -1,4 +1,4 @@
-package localhost.plugin
+package com.github.dkhalansky.paradiseng.plugin
 import scala.meta._
 
 /*  This trait deals with type parameters in annotations.

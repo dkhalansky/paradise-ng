@@ -1,6 +1,6 @@
 package test.macros
 import scala.meta._
-import localhost.lib._
+import com.github.dkhalansky.paradiseng.lib._
 
 object AppendToObject {
     def apply(obj: Defn.Object, stat: Stat): Defn.Object = {

@@ -1,4 +1,4 @@
-package localhost.plugin
+package com.github.dkhalansky.paradiseng.plugin
 import scala.reflect.io.AbstractFile
 import java.net.URL
 

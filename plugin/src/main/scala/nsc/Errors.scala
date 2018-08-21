@@ -1,4 +1,4 @@
-package localhost.plugin
+package com.github.dkhalansky.paradiseng.plugin
 
 /*  This trait provides error handling facilities. */
 trait Errors { self: ParadiseNgComponent =>

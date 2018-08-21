@@ -1,6 +1,6 @@
 package test.macros
 import scala.meta._
-import localhost.lib._
+import com.github.dkhalansky.paradiseng.lib._
 
 class HelloSomething(val hello: String = "Hi", val world: String = "Earth")
 extends ParadiseNgAnnotation {

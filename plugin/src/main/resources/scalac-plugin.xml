@@ -1,4 +1,4 @@
 <plugin>
     <name>paradise-ng</name>
-    <classname>localhost.plugin.ParadiseNg</classname>
+    <classname>com.github.dkhalansky.paradiseng.plugin.ParadiseNg</classname>
 </plugin>

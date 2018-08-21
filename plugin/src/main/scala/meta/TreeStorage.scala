@@ -1,4 +1,4 @@
-package localhost.plugin.meta
+package com.github.dkhalansky.paradiseng.plugin.meta
 import scala.meta._
 import java.io.InputStream
 import java.nio.charset.StandardCharsets

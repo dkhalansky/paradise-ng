@@ -1,4 +1,4 @@
-package localhost.lib
+package com.github.dkhalansky.paradiseng.lib
 
 import scala.annotation.StaticAnnotation
 import scala.meta._
@@ -33,7 +33,7 @@ trait ParadiseNgAnnotation extends StaticAnnotation with TreeTransformation {
 
 class AnnotationCombination(ans: List[(TreeTransformation, Int)])
 extends TreeTransformation {
-    import localhost.lib.internal.meta.Modifiers._
+    import com.github.dkhalansky.paradiseng.lib.internal.meta.Modifiers._
 
     private def splitAtMultiple[T](vals: List[T], ixs: List[Int]) = {
         val r = ((vals, List.empty[List[T]], -1) /: ixs) { (ac, ix) =>

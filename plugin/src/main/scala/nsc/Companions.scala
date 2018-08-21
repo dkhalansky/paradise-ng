@@ -1,4 +1,4 @@
-package localhost.plugin
+package com.github.dkhalansky.paradiseng.plugin
 
 /* This trait is devoted to finding companion objects. */
 trait Companions { self: ParadiseNgComponent =>

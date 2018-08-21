@@ -1,4 +1,4 @@
-package localhost.plugin
+package com.github.dkhalansky.paradiseng.plugin
 
 /*  This trait is devoted to finding the annotations that have the corresponding
     macro functions. */
@@ -11,7 +11,7 @@ trait Annotations extends Companions { self: ParadiseNgComponent =>
        the list of annotations for a symbol), determine if it belongs to
        ParadiseNg. */
     private def isOurTypedAnnotation(an: AnnotationInfo) : Boolean = {
-        import localhost.lib._
+        import com.github.dkhalansky.paradiseng.lib._
         an.symbol isNonBottomSubClass symbolOf[TreeTransformation]
     }
 

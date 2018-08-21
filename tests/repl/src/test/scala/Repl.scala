@@ -3,7 +3,7 @@ class Repl extends ReplSuite("repl") {
     test("Macro annotations do not crash") {
         val printout = repl("""
           |import scala.meta._
-          |import localhost.lib._
+          |import com.github.dkhalansky.paradiseng.lib._
           |class main(x: Int) extends ParadiseNgAnnotation {
           |    override def apply(defn: Stat): Stat = { defn }
           |}
@@ -16,7 +16,7 @@ class Repl extends ReplSuite("repl") {
     test("Macro annotations expand") {
         val printout = repl("""
           |import scala.meta._
-          |import localhost.lib._
+          |import com.github.dkhalansky.paradiseng.lib._
           |class main(x: Int) extends ParadiseNgAnnotation {
           |    override def apply(defn: Stat): Stat = { q"def foo = $x" }
           |}
@@ -29,7 +29,7 @@ class Repl extends ReplSuite("repl") {
     test("Annotations modify the set of definitions") {
         val printout = repl("""
           |import scala.meta._
-          |import localhost.lib._
+          |import com.github.dkhalansky.paradiseng.lib._
           |class main(x: Int, s: String) extends ParadiseNgAnnotation {
           |    override def apply(defn: Stat): Stat = {
           |        val nm = Term.Name(s)

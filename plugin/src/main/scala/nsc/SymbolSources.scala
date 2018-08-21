@@ -1,4 +1,4 @@
-package localhost.plugin
+package com.github.dkhalansky.paradiseng.plugin
 
 /*  This trait attaches to symbols the source code where they were defined. */
 trait SymbolSources { self: ParadiseNgComponent =>

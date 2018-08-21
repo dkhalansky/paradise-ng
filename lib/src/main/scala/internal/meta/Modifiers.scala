@@ -1,4 +1,4 @@
-package localhost.lib.internal.meta
+package com.github.dkhalansky.paradiseng.lib.internal.meta
 import scala.meta._
 
 object Modifiers {

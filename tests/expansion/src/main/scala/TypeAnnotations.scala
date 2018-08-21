@@ -1,6 +1,6 @@
 package test.macros
 import scala.meta._
-import localhost.lib._
+import com.github.dkhalansky.paradiseng.lib._
 
 class InstantiateWithInt(T: Type, nm: String, x: Int)
 extends ParadiseNgAnnotation {

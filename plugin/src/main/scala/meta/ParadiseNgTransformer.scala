@@ -1,6 +1,6 @@
-package localhost.plugin.meta
+package com.github.dkhalansky.paradiseng.plugin.meta
 import scala.meta._
-import localhost.lib._
+import com.github.dkhalansky.paradiseng.lib._
 import scala.util._
 
 /* Given a tree, apply a series of transformations to it. */
